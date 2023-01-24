@@ -20,22 +20,20 @@
   ; once we are done we will display the two lists one 
   ; after the other
 
-  ; (let* (blacks nil) (whites nil))
+  (let* ((blacks nil) (whites nil))
+    (dotimes (i 8)
+      (dotimes (j 8)
+        (let ((rect (sdl2:make-rect (* i 40) (* j 40) 40 40)))
+          (if (or (and (evenp i) (oddp j))
+                  (and (oddp i) (evenp j)))
+            (push rect blacks)
+            (push rect whites)))))
 
-  ; (let* ((blacks nil) (whites nil))
-  ;   (dotimes (i 8)
-  ;     (dotimes (j 8)
-  ;       (let* (rect (sdl2:make-rect (* i 40) (* j 40) 40 40))
-  ;         (if (or (and (evenp i) (oddp j))
-  ;                 (and (oddp i) (evenp j)))
-  ;           (push rect blacks)
-  ;           (push rect whites)))))
-
-  ;   (sdl2:set-render-draw-color renderer 255 0 0 255)
-  ;   ; (sdl-render-fill-rects renderer blacks 32)
-  ;   (sdl2:set-render-draw-color renderer 0 255 0 255)
-  ;   ; (sdl-render-fill-rects renderer whites 32)
-  ; )
+    (sdl2:set-render-draw-color renderer 255 0 0 255)
+    (sdl2:render-fill-rects renderer (sdl2:make-rect 0 0 40 40))
+    ; (sdl2:render-fill-rects renderer blacks 1)
+    (sdl2:set-render-draw-color renderer 0 255 0 255)
+    ; (sdl2:render-fill-rects renderer whites 1))
 )
 
 ; initializes sdl2
