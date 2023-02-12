@@ -1,13 +1,13 @@
-checkers-ai: clean
+checkers-ai:
+	@sbcl --load checkers-ai.asd \
+		    --eval '(ql:quickload :checkers-ai)' \
+				--eval '(checkers-ai:main)'
+
+build: clean
 	@sbcl --non-interactive \
 				--load checkers-ai.asd \
 		    --eval '(ql:quickload :checkers-ai)' \
 				--eval '(asdf:make :checkers-ai)'
-
-run:
-	@sbcl --load checkers-ai.asd \
-		    --eval '(ql:quickload :checkers-ai)' \
-				--eval '(checkers-ai:main)'
 
 test:
 	@sbcl --non-interactive \

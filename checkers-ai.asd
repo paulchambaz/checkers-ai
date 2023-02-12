@@ -12,7 +12,8 @@
                              (:file "constants")
                              (:file "interface")
                              (:file "logic")
-                             (:file "intelligence"))))
+                             (:file "intelligence")
+                             (:file "training"))))
   :in-order-to ((test-op (test-op "checkers-ai/tests")))
   :build-operation "program-op"
   :build-pathname "checkers-ai"
@@ -25,5 +26,10 @@
   :depends-on ("checkers-ai"
                "rove")
   :components ((:module "tests"
-                :components ((:file "main"))))
+                :components ((:file "main_test")
+                             (:file "constants_test")
+                             (:file "interface_test")
+                             (:file "logic_test")
+                             (:file "intelligence_test")
+                             (:file "training_test"))))
   :perform (test-op (op c) (symbol-call :rove :run c)))

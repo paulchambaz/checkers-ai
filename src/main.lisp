@@ -1,6 +1,7 @@
 (in-package :checkers-ai)
 
 (defun main ()
+  (compute-diagonals)
   ; intializes sdl2
   (sdl2:with-init (:everything)
     (finish-output)
@@ -29,7 +30,17 @@
                   ; time to draw
                   (clear renderer)
                   (draw-checker renderer)
-                  (apply #'draw-hint `(,@(get-pos mouse-x mouse-y) ,renderer))
+
+                  (let ((selected (apply #'get-square `(,@(get-pos mouse-x mouse-y)))))
+                    (draw-hint selected renderer)
+                    ; (let ((left (get-diagonal selected 1 -1))
+                    ;       (right(get-diagonal selected 1 1)))
+                    ;   (when left
+                    ;     (draw-hint left renderer))
+                    ;   (when right
+                    ;     (draw-hint right renderer))
+                    ; )
+                  )
                   (draw-pieces board renderer)
                   (sdl2:render-present renderer)
              (sdl2:delay 16)))

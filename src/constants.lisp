@@ -12,20 +12,27 @@
 
 ; size of the grid, here we use a 8x8 grid
 (defconstant +grid-size+ 8)
+(defconstant +nb-squares+ (* +grid-size+ +grid-size+))
 
 ; pixel size of an individual square off board
 (defconstant +size+ (/ (coerce (- +width+ (* 2 (+ +border+ +padding+))) 'float) +grid-size+))
 
 ; value of the squares
-(defconstant +black-pawn+ 1)
-(defconstant +white-pawn+ 2)
-(defconstant +black-king+ 3)
-(defconstant +white-king+ 4)
+(defconstant +white-pawn+ 1)
+(defconstant +black-pawn+ 2)
+(defconstant +white-king+ 3)
+(defconstant +black-king+ 4)
 
-; macro for identity checking
-(defmacro is-empty (value) (= value 0))
-(defmacro is-black-pawn (value) (= value +black-pawn+))
-(defmacro is-white-pawn (value) (= value +white-pawn+))
-(defmacro is-black-king (value) (= value +black-king+))
-(defmacro is-white-king (value) (= value +white-king+))
+; function for identity checking
+(defun is-empty (value) (= value 0))
+(defun is-white-pawn (value) (= value +white-pawn+))
+(defun is-black-pawn (value) (= value +black-pawn+))
+(defun is-white-king (value) (= value +white-king+))
+(defun is-black-king (value) (= value +black-king+))
 
+; function for evaluating the board
+(defun get-line (n) (floor (/ (coerce n 'float) +grid-size+)))
+(defun get-col (n) (floor (mod (coerce n 'float) +grid-size+)))
+(defun get-square (x y)
+  (when (or (= x -1) (= y -1)) (return-from get-square -1))
+  (+ (* y +grid-size+) x))
