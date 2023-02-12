@@ -43,7 +43,6 @@
                        (setf actions-to (select-to selected actions-from))
                        (when (not (null actions-to))
                          (move (nth 0 actions-to) state)
-                         (format t "~a~%" state)
                          (setf actions-from nil)
                          (setf actions-to nil)
                          (setf click-state 0)))))
