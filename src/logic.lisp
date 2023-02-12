@@ -5,6 +5,19 @@
 (defvar *black-left-diagonals* nil)
 (defvar *black-right-diagonals* nil)
 
+; defining the action
+(defun make-action (from to player eating) (list from to player eating))
+(defun get-action-from (action) (nth 0 action))
+(defun get-action-to (action) (nth 1 action))
+(defun get-action-player (action) (nth 2 action))
+(defun get-action-eating (action) (nth 3 action))
+
+; defining a state
+(defun make-state (board player eating) (list board player eating))
+(defun get-state-board (state) (nth 0 state))
+(defun get-state-player (state) (nth 1 state))
+(defun get-state-eating (state) (nth 2 state))
+
 (defun init-board ()
   "Creates a new board and places the pieces"
   ; TODO half the squares are useless so we will need to optimize it
@@ -133,12 +146,79 @@
           (nth (- (- +nb-squares+ 1) n) *black-left-diagonals*)
           (nth (- (- +nb-squares+ 1) n) *black-right-diagonals*))))
 
-; TODO the queens should be dealt with last so we start the exploration with the
+; TODO the kings should be dealt with last so we start the exploration with the
 ; strongest one first
 
-(defun get-actions-piece (board n id)
-  "Returns the list of actions from a single piece"
+(defun get-piece-actions (n state)
+  "Returns the list of actions from a single piece (:fr :to :pl)"
+  ; if it is not on the (get-state-board state) we exit
+  (when (= n -1) (return-from get-piece-actions nil))
+  ; if we have to eat again with the same piece, but this piece is not selected
+  ; we exit
+  (when (and (not (= (get-state-eating state) -1)) (not (= n (get-state-eating state))))
+    (return-from get-piece-actions nil))
   (let ((actions nil))
-    (if (is-white-pawn id)
-      (format t "This is a white piece")
-      )))
+    (when (is-white-pawn (nth n (get-state-board state)))
+        (let ((left (get-diagonal n 0 -1)) (right (get-diagonal n 0 1)))
+          (when left
+            (if (is-empty (nth left (get-state-board state)))
+                (push (make-action n left 1 -1) actions)))
+          (when right
+            (if (is-empty (nth right (get-state-board state)))
+                (push (make-action n right 1 -1) actions)))))
+    (when (is-black-pawn (nth n (get-state-board state)))
+      (let ((left (get-diagonal n 1 -1)) (right (get-diagonal n 1 1)))
+          (when left
+            (if (is-empty (nth left (get-state-board state)))
+                (push (make-action n left 0 -1) actions)))
+          (when right
+            (if (is-empty (nth right (get-state-board state)))
+                (push (make-action n right 0 -1) actions)))))
+   actions))
+
+(defun switch-player (player) (mod (+ player 1) 2))
+
+(defun get-actions (state)
+  "Returns the list of actions"
+  ; if a piece must eat then we return its actions
+  (let ((actions nil))
+    (if (not (= (get-state-eating state) -1))
+        (setf actions (append actions (get-piece-actions
+                                        (get-state-eating state)
+                                        state)))
+        ; we want to get all the pieces of the player playing and append their
+        ; actions to the action list
+        (if (= (get-state-player state) 0)
+            (dolist (white-pawn (get-white-pawns (get-state-board state)))
+              (setf actions (append actions (get-piece-actions
+                                              (getf white-pawn :n)
+                                              state))))
+            (dolist (black-pawn (get-black-pawns (get-state-board state)))
+              (setf actions (append actions (get-piece-actions
+                                              (getf black-pawn :n)
+                                              state))))))
+
+    ; if there are no actions then we add an artifical empty one
+    (when (null actions) (push (make-action -1 -1 (switch-player (get-state-player state)) -1) actions))
+    actions))
+
+(defun select-from (from actions)
+  "Selects only actions that start at from"
+  (remove-if-not #'(lambda (action)
+                     (= (get-action-from action) from)) actions))
+
+(defun select-to (to actions)
+  "Selects only actions that end at to"
+  (remove-if-not #'(lambda (action)
+                     (= (get-action-to action) to)) actions))
+
+(defun move (action state)
+  "Changes the state from an action"
+  ; TODO find a way to do this access cleanly
+  (let ((board (nth 0 state)) (player (nth 1 state)) (eating (nth 2 state)))
+    (setf (nth (get-action-to action) (nth 0 state))
+          (nth (get-action-from action) (nth 0 state)))
+    (setf (nth (get-action-from action) (nth 0 state))
+          0)
+    (setf (nth 1 state) (switch-player (get-state-player state)))
+    (setf (nth 2 state) (get-state-eating state))))

@@ -1,6 +1,8 @@
 (in-package :checkers-ai)
 
 (defvar *textures* (make-list 4))
+(defvar *mouse* nil)
+(defvar *prev-mouse* nil)
 
 (defun clear (renderer)
   "Clears the renderer to a blank screen"
@@ -123,3 +125,21 @@
   "Hints all black kings"
   (dolist (square (get-black-kings board))
     (draw-hint (getf square :n) renderer)))
+
+(defun hint-actions (actions renderer)
+  "Hints all member of an action list"
+  (dolist (action actions)
+    (draw-hint (get-action-to action) renderer)))
+
+(defun hint-actions-from (actions renderer)
+  "Hints all member of an action list"
+  (dolist (action actions)
+    (draw-hint (get-action-from action) renderer)))
+
+(defun hint-actions-to (actions renderer)
+  "Hints all member of an action list"
+  (dolist (action actions)
+    (draw-hint (get-action-to action) renderer)))
+
+(defun mouse-pressed ()
+  (and (not (null *mouse*)) (null *prev-mouse*)))

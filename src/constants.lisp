@@ -29,6 +29,8 @@
 (defun is-black-pawn (value) (= value +black-pawn+))
 (defun is-white-king (value) (= value +white-king+))
 (defun is-black-king (value) (= value +black-king+))
+(defun is-pawn (value) (or (is-white-pawn value) (is-black-pawn value)))
+(defun is-king (value) (or (is-white-king value) (is-black-king value)))
 
 ; function for evaluating the board
 (defun get-line (n) (floor (/ (coerce n 'float) +grid-size+)))
