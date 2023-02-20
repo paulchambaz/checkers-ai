@@ -29,6 +29,8 @@
 (defun is-black-pawn (value) (= value +black-pawn+))
 (defun is-white-king (value) (= value +white-king+))
 (defun is-black-king (value) (= value +black-king+))
+(defun is-white (value) (or (is-white-pawn value) (is-white-king value)))
+(defun is-black (value) (or (is-black-pawn value) (is-black-king value)))
 (defun is-pawn (value) (or (is-white-pawn value) (is-black-pawn value)))
 (defun is-king (value) (or (is-white-king value) (is-black-king value)))
 
@@ -38,3 +40,10 @@
 (defun get-square (x y)
   (when (or (= x -1) (= y -1)) (return-from get-square -1))
   (+ (* y +grid-size+) x))
+
+; math constants
+(defconstant +positive-infinity+ 2147483647)
+(defconstant +negative-infinity+ (- +positive-infinity+))
+
+; search constants
+(defconstant +search-depth+ 5)

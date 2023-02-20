@@ -1,7 +1,51 @@
 (in-package :checkers-ai)
 
+(defun player-turn (state actions click-state)
+  "Player turn"
+  (when (= (get-action-from (nth 0 actions)) -1)
+    (setf (nth 1 state) (switch-player (nth 1 state)))
+    (setf (nth 2 state) -1))
+  (if (mouse-pressed)
+    ; first we get the value of the square pressed
+    (progn (setf selected (apply #'get-square
+                                 `(,@(get-pos *mouse-x* *mouse-y*))))
+           ; if the square is valid
+           (when (not (= selected -1))
+             (if (= click-state 0)
+               ; if we are at the first part - piece selection
+               (progn (setf actions-from (select-from selected actions))
+                      (if (not (null actions-from))
+                        (values 1 selected) (values 0 selected)))
+               ; if we are at the second part - move selection
+               (progn (setf actions-to (select-to selected actions-from))
+                      ; if we are moving to a valid move
+                      (if (null actions-to)
+                          ; if the move is invalid we reset the turn
+                          (progn (setf actions-from nil)
+                                 (values 0 selected))
+                          ; if the move is valid we change the state
+                          (progn (result (nth 0 actions-to) state)
+                                 ; and reset variables
+                                 (setf actions-from nil)
+                                 (setf actions-to nil)
+                                 (values 0 selected)))))))
+      (values click-state nil)))
+
+(defun ia-turn (state ai)
+  "Ia turn"
+  ; (format t "time: ~a~%" (get-decoded-time))
+  (multiple-value-bind (value move) (minimax-search state +search-depth+ ai)
+    ; (format t "move: ~a, value: ~a~%" move value)
+    (result move state))
+  ; (format t "~a~%" (get-decoded-time)))
+)
+
 (defun main ()
+  (setf *random-state* (make-random-state t))
   (compute-diagonals)
+  (dotimes (i 100)
+    (setf *gen* (init-gen 2))
+    (match (get-ai 0 *gen*) (get-ai 1 *gen*)))
   ; intializes sdl2
   (sdl2:with-init (:everything)
     (finish-output)
@@ -14,7 +58,6 @@
 
         (format t "Welcome to the checkers-ai program, please select a difficulty mode:~%")
 
-        ; (let ((board (init-board)) (player 0) (eating 42))
         (let ((state (make-state (init-board) 0 -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
 
         ; polls events
@@ -29,34 +72,44 @@
              (multiple-value-bind (mouse-x mouse-y mouse-bitmask) (sdl2:mouse-state)
 
                (setf *mouse* (= (mod mouse-bitmask 2) 1))
+               (setf *mouse-x* mouse-x)
+               (setf *mouse-y* mouse-y)
 
-               (let ((actions (get-actions state)))
+               ; (format t "~%~%~%")
 
-                 (when (mouse-pressed)
-                   (setf selected (apply #'get-square `(,@(get-pos mouse-x mouse-y))))
-                   (if (= click-state 0)
-                     (when (not (= selected -1))
-                       (setf actions-from (select-from selected actions))
-                         (when (not (null actions-from))
-                           (setf click-state 1)))
-                     (when (not (= selected -1))
-                       (setf actions-to (select-to selected actions-from))
-                       (when (not (null actions-to))
-                         (move (nth 0 actions-to) state)
-                         (setf actions-from nil)
-                         (setf actions-to nil)
-                         (setf click-state 0)))))
+               (let ((actions (actions state)))
 
-               ; time to draw
-               (clear renderer)
-               (draw-checker renderer)
-               (when (= click-state 0) (hint-actions-from actions renderer))
-               (when (= click-state 1) (hint-actions-to (select-from selected actions) renderer))
+                 (if (= (get-state-player state) 0)
+                     ; turn of the player
+                     (progn ; (format t "white turn~%")
+                            (ia-turn state (get-ai 1 *gen*)))
+                            ; (multiple-value-bind (_click-state _selected)
+                            ;     (player-turn state actions click-state)
+                            ;   (setf click-state _click-state)
+                            ;   (when _selected (setf selected _selected))))
+                     ; turn of the ia
+                     (progn ; (format t "black turn~%")
+                            (ia-turn state (get-ai 0 *gen*))))
+                            ; (multiple-value-bind (_click-state _selected)
+                            ;     (player-turn state actions click-state)
+                            ;   (setf click-state _click-state)
+                            ;   (when _selected (setf selected _selected)))))
 
-               (draw-pieces (get-state-board state) renderer)
-               (sdl2:render-present renderer)
 
-               (setf *prev-mouse* *mouse*)
+                 (setf actions (actions state))
+                 ; time to draw
+                 (clear renderer)
+                 (draw-checker renderer)
+                 ; (format t "click-state ~a~%" click-state)
+                 (when (= click-state 0)
+                   (hint-actions-from actions renderer))
+                 (when (= click-state 1)
+                   (hint-actions-to (select-from selected actions) renderer))
 
-               (sdl2:delay 16))))
+                 (draw-pieces (get-state-board state) renderer)
+                 (sdl2:render-present renderer)
+
+                 (setf *prev-mouse* *mouse*)
+
+                 (sdl2:delay 16))))
             (:quit () t)))))))

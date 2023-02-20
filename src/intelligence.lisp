@@ -1,1 +1,111 @@
 (in-package :checkers-ai)
+
+(defun minimax-search (state depth ai)
+  ; (format t "minimax-search~%")
+  (let ((player (to-move state)))
+    (multiple-value-bind (value move)
+                         (max-value (copy-state state) player 0 depth ai)
+      (values value move))))
+
+(defun max-value (state init-player depth max-depth ai)
+  ; (format t "max-value~%")
+  ; (format t "max: ~a ~a ~a/~a~%" (to-move state) init-player depth max-depth)
+  ; return clause
+  (if (= depth max-depth)
+    (values (utility state init-player ai) nil)
+    (let ((v +negative-infinity+) (move nil))
+      ; gets the list of actions
+      (dolist (a (actions state))
+        ; (format t "~a~%" a)
+        (let ((result (result a (copy-state state))))
+          ; is it the init-player's turn to play
+          ; (format t "player: ~a init-player: ~a~%" (to-move result) init-player)
+          (if (= (to-move result) init-player)
+            ; it is
+            (multiple-value-bind (v2 a2)
+                ; recursive call
+                (max-value result init-player (+ depth 1) max-depth ai)
+              ; (format t "v2: ~a ~a~%" v2 v)
+              (when (> v2 v) 
+                (setf v v2)
+                (setf move a)
+              )
+            )
+            ; it is not
+            (multiple-value-bind (v2 a2)
+                ; recursive call
+                (min-value result init-player (+ depth 1) max-depth ai)
+              ; (format t "v2: ~a ~a~%" v2 v)
+              (when (> v2 v) 
+                (setf v v2)
+                (setf move a)
+              )
+            )
+          )
+        )
+      )
+      ; (format t "value: ~a move: ~a~%" v move)
+      (values v move)
+    )
+  )
+)
+
+(defun min-value (state init-player depth max-depth ai)
+  ; (format t "min-value~%")
+  ; (format t "min: ~a ~a ~a/~a~%" (to-move state) init-player depth max-depth)
+  ; return clause
+  (if (= depth max-depth)
+    (values (utility state init-player ai) nil)
+    (let ((v +positive-infinity+) (move nil))
+      ; gets the list of actions
+      (dolist (a (actions state))
+        ; (format t "~a~%" a)
+        (let ((result (result a (copy-state state))))
+          ; is it the init-player's turn to play
+          ; (format t "player: ~a init-player: ~a~%" (to-move result) init-player)
+          (if (= (to-move result) init-player)
+            ; it is
+            (multiple-value-bind (v2 a2)
+                ; recursive call
+                (max-value result init-player (+ depth 1) max-depth ai)
+              ; (format t "v2: ~a ~a~%" v2 v)
+              (when (< v2 v) 
+                (setf v v2)
+                (setf move a)
+              )
+            )
+            ; it is not
+            (multiple-value-bind (v2 a2)
+                ; recursive call
+                (min-value result init-player (+ depth 1) max-depth ai)
+              ; (format t "v2: ~a ~a~%" v2 v)
+              (when (< v2 v) 
+                (setf v v2)
+                (setf move a)
+              )
+            )
+          )
+        )
+      )
+      ; (format t "value: ~a move: ~a~%" v move)
+      (values v move)
+    )
+  )
+)
+
+(defun utility (state player ai)
+  "Utility function of the algorithm"
+  ; (format t "utility~%")
+  ; (format t "~a~%" ai)
+  (+ (* (get-weight 0 ai) (count-pawn state player))
+     (* (get-weight 1 ai) (count-pawn state (switch-player player)))
+     ))
+
+(defun count-pawn (state player)
+  "Counts the number of pieces of a player"
+  ; (format t "count-pawn~%")
+  (if (= player 0)
+    (count +white-pawn+ (get-state-board state))
+    (count +black-pawn+ (get-state-board state))
+  )
+)

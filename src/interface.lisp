@@ -2,6 +2,8 @@
 
 (defvar *textures* (make-list 4))
 (defvar *mouse* nil)
+(defvar *mouse-x* -1)
+(defvar *mouse-y* -1)
 (defvar *prev-mouse* nil)
 
 (defun clear (renderer)

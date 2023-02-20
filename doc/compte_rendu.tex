@@ -101,7 +101,7 @@ développer une fonction d'évaluation complexe.
 
     Un pion peut manger un autre pion. Pour ce faire, si un pion ennemi se
     situe en diagonale du pion, et que la case derrière en diagonale n'est pas
-    occupée, alors le pion peut le manger.  Si c'est le cas, alors le pion se
+    occupée, alors le pion peut le manger. Si c'est le cas, alors le pion se
     déplacera sur la case libre de derrière et le pion ennemi sera retiré du
     damier -- le jouer ne pourra plus l'utiliser. Il faut noter que du fait, un
     pion ne peut manger qu'en avant par rapport à son point de départ. De plus,
@@ -163,6 +163,7 @@ développer une fonction d'évaluation complexe.
     \item \emph{intelligence.lisp} contient tout le code de l'implémentation
       alpha-bêta et les fonctions nécessaire pour le bon fonctionnement de
       l'intelligence artificielle.
+      % ajouter training.lisp
   \end{itemize}
 
 \section{Description de l'intelligence articielle}
@@ -171,19 +172,20 @@ développer une fonction d'évaluation complexe.
 
     Avant de commencer la description du programme de ce projet, nous nous
     interesseront au programme Chinook. Ce programme est connu pour avoir battu
-    le record du monde en 1994 -- sans avoir battu \emph{Marion Tinsley} qui
-    était considéré comme de loin le meilleur joueur du monde, détenant le
-    titre pendant plus de 40 ans. Le joueur avait pris sa retraite suite à des
-    problèmes de santé et décedera l'année suivante invaincu ! En 2007,
-    cependant, les chercheurs de \emph{l'Université d'Alberta} réussirent à
-    résoudre le problèmes du jeu de dames. Si le programme que nous proposons
-    est loin d'égaler cette performance, il est important d'étudier le
-    fonctionnement de \emph{Chinook}.  En effet, ce programme n'est pas un
-    programme du type \emph{réseau de neuronnes profonds}, comme le seront plus
-    tard des programmes révolutionnaires comme \emph{Deep Blue} qui vaincu
-    \emph{Garry Kasparov}, le champion du monde des échecs. \emph{Chinook} est
-    bien plus propre du fonctionnement de l'algorithme utilisé dans ce projet.
-    Le programme fonctionne en trois phases distinctes, la première phase est
+    le record du monde en 1994.\footnote{Chinook devint champion sans avoir
+    battu \emph{Marion Tinsley} qui était considéré comme de loin le meilleur
+    joueur du monde, détenant le titre pendant plus de 40 ans. Le joueur avait
+    pris sa retraite suite à des problèmes de santé et décedera l'année
+    suivante invaincu !} En 2007, cependant, les chercheurs de
+    \emph{l'Université d'Alberta} réussirent à résoudre le problèmes du jeu de
+    dames. Si le programme que nous proposons est loin d'égaler cette
+    performance, il est important d'étudier le fonctionnement de
+    \emph{Chinook}.  En effet, ce programme n'est pas un programme du type
+    \emph{réseau de neuronnes profonds}, comme le seront plus tard des
+    programmes révolutionnaires comme \emph{Deep Blue} qui vaincu \emph{Garry
+    Kasparov}, le champion du monde des échecs. \emph{Chinook} est bien plus
+    propre du fonctionnement de l'algorithme utilisé dans ce projet.  Le
+    programme fonctionne en trois phases distinctes, la première phase est
     résolu avec un base de donnée contenant tous les coups classiques utilisés
     par les joueurs professionels. La seconde phase qui nous intéresse
     particulièrement, est résolu par un algorithme de recherche profonde. Ce
@@ -199,6 +201,9 @@ développer une fonction d'évaluation complexe.
     configurations légale de fin du jeu.
 
   \subsection{PEAS du programme}
+
+  % donner la definition formelle du probleme de recherche
+  % etat, action, etc...
 
   \subsection{Définition formelle d'un état}
 
@@ -222,19 +227,16 @@ développer une fonction d'évaluation complexe.
     élements:
 
     \begin{itemize} 
-      \item Le tableau du damier, comportant un total de \begin{math} 8 \times 8
-        \end{math} cases. A chaque case, un entier est attribué, \begin{math} 0
-        \end{math} pour une case vide, \begin{math} 1 \end{math} pour un pion
-        noir, \begin{math} 2 \end{math} pour un pion blanc, \begin{math} 3
-        \end{math}, pour une dame noire et \begin{math} 4 \end{math} pour une
-        dame blanche. On fait le choix de stocker les cases blances : en effet,
-        on espère que cela permette à certains algorithme d'être plus rapide et
-        la taille total de la représentation de la liste ne sera pas copié, ce
-        qui devrait ne pas couter plus.  
-      \item Le numero du joueur, \begin{math} 0 \end{math} pour les noirs et
-        \begin{math} 1 \end{math} pour les blancs.
-      \item Un argument optionel si un pion doit continuer à manger. Ce genre de
-        configuration n'arrive que après qu'un pion ait mangé et qu'il peut
+      \item Le tableau du damier, comportant un total de $8 \times 8$ cases. A
+        chaque case, un entier est attribué, $0$ pour une case vide, $1$ pour
+        un pion noir, $2$ pour un pion blanc, $3$, pour une dame noire et $4$
+        pour une dame blanche. On fait le choix de stocker les cases blances :
+        en effet, on espère que cela permette à certains algorithme d'être plus
+        rapide et la taille total de la représentation de la liste ne sera pas
+        copié, ce qui devrait ne pas couter plus.  
+      \item Le numero du joueur, $0$ pour les noirs et $1$ pour les blancs.
+      \item Un argument optionel si un pion doit continuer à manger. Ce genre
+        de configuration n'arrive que après qu'un pion ait mangé et qu'il peut
         encore manger après. Comme le pion peut faire un choix, nous avons
         choisi de laisser le programme chercher et considerer cela comme un
         autre tour.  Durant ce tour, le rôle du joueur ne changera pas, mais il
