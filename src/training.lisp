@@ -30,4 +30,4 @@
     (when (> (utility state 0 white) (utility state 1 black))
       (format t "White won~%"))
     (when (< (utility state 0 white) (utility state 1 black))
-      (format t "Black won~%"))))
+      (format t "Black won~%")))
