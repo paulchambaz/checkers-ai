@@ -43,7 +43,7 @@
 (defun main ()
   (setf *random-state* (make-random-state t))
   (compute-diagonals)
-  (dotimes (i 100)
+  (dotimes (i 2)
     (setf *gen* (init-gen 2))
     (match (get-ai 0 *gen*) (get-ai 1 *gen*)))
   ; intializes sdl2
