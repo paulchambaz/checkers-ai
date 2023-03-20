@@ -192,7 +192,7 @@
             ; we check that we could eat
             (when (and (is-empty (nth lleft (get-state-board state)))
                        (is-black (nth left (get-state-board state))))
-              (push (make-action n lleft 0 lleft) actions))))))
+              (push (make-action n lleft 1 lleft) actions))))))
     actions))
 
 (defun white-back-right-actions (n state)
@@ -206,7 +206,7 @@
             ; we check that we could eat
             (when (and (is-empty (nth lright (get-state-board state)))
                        (is-black (nth right (get-state-board state))))
-              (push (make-action n lright 0 lright) actions))))))
+              (push (make-action n lright 1 lright) actions))))))
     actions))
 
 (defun white-pawn-actions (n state)
@@ -214,6 +214,9 @@
           (white-front-right-actions n state)
           (white-back-left-actions n state)
           (white-back-right-actions n state)))
+
+(defun white-actions (n state)
+  (append (white-pawn-actions n state)))
 
 (defun black-front-left-actions (n state)
   "Returns the list of action for a black pawn to the left"
@@ -279,6 +282,9 @@
           (black-back-left-actions n state)
           (black-back-right-actions n state)))
 
+(defun black-actions (n state)
+  (append (black-pawn-actions n state)))
+
 (defun get-piece-actions (n state)
   "Returns the list of actions from a single piece"
   ; if it is not on the (get-state-board state) we exit
@@ -290,19 +296,10 @@
   (let ((actions nil))
     ; white pawn movements
     (when (is-white-pawn (nth n (get-state-board state)))
-      ; (setf actions (white-actions n state))
-      (setf actions (append actions (white-front-left-actions n state)))
-      (setf actions (append actions (white-front-right-actions n state)))
-      (setf actions (append actions (white-back-left-actions n state)))
-      (setf actions (append actions (white-back-right-actions n state)))
-    )
+      (setf actions (append actions (white-actions n state))))
     ; black pawn movements
     (when (is-black-pawn (nth n (get-state-board state)))
-      (setf actions (append actions (black-front-left-actions n state)))
-      (setf actions (append actions (black-front-right-actions n state)))
-      (setf actions (append actions (black-back-left-actions n state)))
-      (setf actions (append actions (black-back-right-actions n state)))
-    )
+      (setf actions (append actions (black-actions n state))))
     actions))
 
 (defun switch-player (player) (mod (+ player 1) 2))
