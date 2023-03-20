@@ -148,10 +148,10 @@
           (nth (- (- +nb-squares+ 1) n) *black-left-diagonals*)
           (nth (- (- +nb-squares+ 1) n) *black-right-diagonals*))))
 
-; TODO the kings should be dealt with last so we start the exploration with the
-; strongest one first
+; TODO the checkers should be dealt with last so we start the exploration with
+; the strongest one first
 
-(defun white-left-actions (n state)
+(defun white-front-left-actions (n state)
   "Returns the list of action for a white pawn to the left"
   (let ((actions nil) (left (get-diagonal n 0 -1)))
     (when left
@@ -166,7 +166,7 @@
                 (push (make-action n lleft 0 lleft) actions))))))
     actions))
 
-(defun white-right-actions (n state)
+(defun white-front-right-actions (n state)
   "Returns the list of action for a white pawn to the right"
   (let ((actions nil) (right (get-diagonal n 0 1)))
     (when right
@@ -181,7 +181,41 @@
                 (push (make-action n rright 0 rright) actions))))))
     actions))
 
-(defun black-left-actions (n state)
+(defun white-back-left-actions (n state)
+  "Returns the list of actions for a white pawn to the back left"
+  (let ((actions nil) (left (get-diagonal n 1 -1)))
+    (when left
+      (if (is-empty (nth left (get-state-board state)))
+        ; no not add movement this time
+        (let ((lleft (get-diagonal left 1 -1)))
+          (when lleft
+            ; we check that we could eat
+            (when (and (is-empty (nth lleft (get-state-board state)))
+                       (is-black (nth left (get-state-board state))))
+              (push (make-action n lleft 0 lleft) actions))))))
+    actions))
+
+(defun white-back-right-actions (n state)
+  "Returns the list of actions for a white pawn to the back right"
+  (let ((actions nil) (right (get-diagonal n 1 1)))
+    (when right
+      (if (is-empty (nth right (get-state-board state)))
+        ; no not add movement this time
+        (let ((lright (get-diagonal right 1 1)))
+          (when lright
+            ; we check that we could eat
+            (when (and (is-empty (nth lright (get-state-board state)))
+                       (is-black (nth right (get-state-board state))))
+              (push (make-action n lright 0 lright) actions))))))
+    actions))
+
+(defun white-pawn-actions (n state)
+  (append (white-front-left-actions n state)
+          (white-front-right-actions n state)
+          (white-back-left-actions n state)
+          (white-back-right-actions n state)))
+
+(defun black-front-left-actions (n state)
   "Returns the list of action for a black pawn to the left"
   (let ((actions nil) (left (get-diagonal n 1 -1)))
     (when left
@@ -196,7 +230,7 @@
                 (push (make-action n lleft 1 lleft) actions))))))
     actions))
 
-(defun black-right-actions (n state)
+(defun black-front-right-actions (n state)
   "Returns the list of action for a black pawn to the right"
   (let ((actions nil) (right (get-diagonal n 1 1)))
     (when right
@@ -211,6 +245,40 @@
                 (push (make-action n rright 1 rright) actions))))))
     actions))
 
+(defun black-back-left-actions (n state)
+  "Returns the list of actions for a black pawn to the back left"
+  (let ((actions nil) (left (get-diagonal n 0 -1)))
+    (when left
+      (if (is-empty (nth left (get-state-board state)))
+        ; no not add movement this time
+        (let ((lleft (get-diagonal left 0 -1)))
+          (when lleft
+            ; we check that we could eat
+            (when (and (is-empty (nth lleft (get-state-board state)))
+                       (is-black (nth left (get-state-board state))))
+              (push (make-action n lleft 0 lleft) actions))))))
+    actions))
+
+(defun black-back-right-actions (n state)
+  "Returns the list of actions for a black pawn to the back right"
+  (let ((actions nil) (right (get-diagonal n 0 1)))
+    (when right
+      (if (is-empty (nth right (get-state-board state)))
+        ; no not add movement this time
+        (let ((lright (get-diagonal right 0 1)))
+          (when lright
+            ; we check that we could eat
+            (when (and (is-empty (nth lright (get-state-board state)))
+                       (is-black (nth right (get-state-board state))))
+              (push (make-action n lright 0 lright) actions))))))
+    actions))
+
+(defun black-pawn-actions (n state)
+  (append (black-front-left-actions n state)
+          (black-front-right-actions n state)
+          (black-back-left-actions n state)
+          (black-back-right-actions n state)))
+
 (defun get-piece-actions (n state)
   "Returns the list of actions from a single piece"
   ; if it is not on the (get-state-board state) we exit
@@ -222,17 +290,18 @@
   (let ((actions nil))
     ; white pawn movements
     (when (is-white-pawn (nth n (get-state-board state)))
-      (setf actions (append actions (white-left-actions n state)))
-      ; (format t "white left : ~a~%" actions)
-      (setf actions (append actions (white-right-actions n state)))
-      ; (format t "white right : ~a~%" actions)
+      ; (setf actions (white-actions n state))
+      (setf actions (append actions (white-front-left-actions n state)))
+      (setf actions (append actions (white-front-right-actions n state)))
+      (setf actions (append actions (white-back-left-actions n state)))
+      (setf actions (append actions (white-back-right-actions n state)))
     )
     ; black pawn movements
     (when (is-black-pawn (nth n (get-state-board state)))
-      (setf actions (append actions (black-left-actions n state)))
-      ; (format t "black left : ~a~%" actions)
-      (setf actions (append actions (black-right-actions n state)))
-      ; (format t "black right : ~a~%" actions)
+      (setf actions (append actions (black-front-left-actions n state)))
+      (setf actions (append actions (black-front-right-actions n state)))
+      (setf actions (append actions (black-back-left-actions n state)))
+      (setf actions (append actions (black-back-right-actions n state)))
     )
     actions))
 
