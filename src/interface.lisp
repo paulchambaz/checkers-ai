@@ -11,14 +11,6 @@
   (sdl2:set-render-draw-color renderer 0 0 0 255)
   (sdl2:render-clear renderer))
 
-; TODO remove this if it is useless
-(defmacro get-rect-dim (x y)
-  "Get the dimension for a rectangle at coordinates x y of the checker board"
-  (list (round (+ (* x +size+) (+ +padding+ +border+)))
-        (round (+ (* y +size+) (+ +padding+ +border+)))
-        (round +size+)
-        (round +size+)))
-
 (defun get-rect (x y)
   "Gets the rect at coordinate x y of the checker board"
   (sdl2:make-rect (round (+ (* x +size+) (+ +padding+ +border+)))

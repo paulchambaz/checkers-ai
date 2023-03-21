@@ -1,7 +1,8 @@
-checkers-ai:
+run:
 	@sbcl --load checkers-ai.asd \
 		    --eval '(ql:quickload :checkers-ai)' \
-				--eval '(checkers-ai:main)'
+				--eval '(checkers-ai:main)' \
+				--eval '(exit)'
 
 build: clean
 	@sbcl --non-interactive \

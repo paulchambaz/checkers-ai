@@ -1,35 +1,39 @@
 (in-package :checkers-ai)
 
-(defun player-turn (state actions click-state)
+(defun player-turn (state actions p-click-state p-selected)
   "Player turn"
   (when (= (get-action-from (nth 0 actions)) -1)
     (setf (nth 1 state) (switch-player (nth 1 state)))
     (setf (nth 2 state) -1))
+
   (if (mouse-pressed)
-    ; first we get the value of the square pressed
-    (progn (setf selected (apply #'get-square
-                                 `(,@(get-pos *mouse-x* *mouse-y*))))
-           ; if the square is valid
-           (when (not (= selected -1))
-             (if (= click-state 0)
-               ; if we are at the first part - piece selection
-               (progn (setf actions-from (select-from selected actions))
-                      (if (not (null actions-from))
-                        (values 1 selected) (values 0 selected)))
-               ; if we are at the second part - move selection
-               (progn (setf actions-to (select-to selected actions-from))
-                      ; if we are moving to a valid move
-                      (if (null actions-to)
-                          ; if the move is invalid we reset the turn
-                          (progn (setf actions-from nil)
-                                 (values 0 selected))
-                          ; if the move is valid we change the state
-                          (progn (result (nth 0 actions-to) state)
-                                 ; and reset variables
-                                 (setf actions-from nil)
-                                 (setf actions-to nil)
-                                 (values 0 selected)))))))
-      (values click-state nil)))
+      ; first we get the value of the square pressed
+      (progn (setf selected (apply #'get-square
+                                   `(,@(get-pos *mouse-x* *mouse-y*))))
+
+             ; if the square is valid
+             (if (not (= selected -1))
+                 (if (= p-click-state 0)
+                     ; if we are at the first part - piece selection
+                     (progn (setf actions-from (select-from selected actions))
+                            (if (not (null actions-from))
+                                (values 1 selected)
+                                (values 0 selected)))
+                     ; if we are at the second part - move selection
+                     (progn (setf actions-to (select-to selected actions-from))
+                            ; if we are moving to a valid move
+                            (if (null actions-to)
+                                ; if the move is invalid we reset the turn
+                                (progn (setf actions-from nil)
+                                       (values 0 selected))
+                                ; if the move is valid we change the state
+                                (progn (result (nth 0 actions-to) state)
+                                       ; and reset variables
+                                       (setf actions-from nil)
+                                       (setf actions-to nil)
+                                       (values 0 selected)))))
+                 (values p-click-state p-selected)))
+      (values p-click-state p-selected)))
 
 (defun ia-turn (state ai)
   "Ia turn"
@@ -75,34 +79,40 @@
                (setf *mouse-x* mouse-x)
                (setf *mouse-y* mouse-y)
 
-               ; (format t "~%~%~%")
-
                (let ((actions (actions state)))
 
                  (if (= (get-state-player state) 0)
+
                      ; turn of the player
-                     (progn ; (format t "white turn~%")
+                     (progn 
                             ; (ia-turn state (get-ai 1 *gen*)))
-                            (multiple-value-bind (_click-state _selected)
-                                (player-turn state actions click-state)
-                              (setf click-state _click-state)
-                              (when _selected (setf selected _selected))))
-                     ; turn of the ia
-                     (progn ; (format t "black turn~%")
+                            (multiple-value-bind (t-click-state t-selected)
+                                (player-turn state actions click-state selected)
+                              (setf click-state t-click-state)
+                              (setf selected t-selected)
+                              ))
+
+                     ; ; turn of the ia
+                     (progn
                             ; (ia-turn state (get-ai 0 *gen*))))
                             (multiple-value-bind (_click-state _selected)
-                                (player-turn state actions click-state)
+                                (player-turn state actions click-state selected)
                               (setf click-state _click-state)
-                              (when _selected (setf selected _selected)))))
+                              (setf selected _selected)
+                              ))
+                 )
 
 
                  (setf actions (actions state))
+
                  ; time to draw
+
                  (clear renderer)
                  (draw-checker renderer)
-                 ; (format t "click-state ~a~%" click-state)
+
                  (when (= click-state 0)
                    (hint-actions-from actions renderer))
+
                  (when (= click-state 1)
                    (hint-actions-to (select-from selected actions) renderer))
 
@@ -113,3 +123,4 @@
 
                  (sdl2:delay 16))))
             (:quit () t)))))))
+
