@@ -37,12 +37,8 @@
 
 (defun ia-turn (state ai)
   "Ia turn"
-  ; (format t "time: ~a~%" (get-decoded-time))
-  (multiple-value-bind (value move) (minimax-search state +search-depth+ ai)
-    ; (format t "move: ~a, value: ~a~%" move value)
-    (result move state))
-  ; (format t "~a~%" (get-decoded-time)))
-)
+  (multiple-value-bind (value move) (ai-search state +search-depth+ ai)
+    (result move state)))
 
 (defun main ()
   (setf *random-state* (make-random-state t))
@@ -62,7 +58,7 @@
 
         (format t "Welcome to the checkers-ai program, please select a difficulty mode:~%")
 
-        (let ((state (make-state (set-board) 0 -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
+        (let ((state (make-state (init-board) 0 -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
 
         ; polls events
           (sdl2:with-event-loop (:method :poll)
@@ -81,6 +77,18 @@
 
                (let ((actions (actions state)))
 
+                 (clear renderer)
+                 (draw-checker renderer)
+
+                 (when (= click-state 0)
+                   (hint-actions-from actions renderer))
+
+                 (when (= click-state 1)
+                   (hint-actions-to (select-from selected actions) renderer))
+
+                 (draw-pieces (get-state-board state) renderer)
+                 (sdl2:render-present renderer)
+
                  (if (= (get-state-player state) 0)
 
                      ; turn of the player
@@ -89,17 +97,15 @@
                             (multiple-value-bind (t-click-state t-selected)
                                 (player-turn state actions click-state selected)
                               (setf click-state t-click-state)
-                              (setf selected t-selected)
-                              ))
+                              (setf selected t-selected)))
 
                      ; ; turn of the ia
                      (progn
-                            ; (ia-turn state (get-ai 0 *gen*))))
-                            (multiple-value-bind (_click-state _selected)
-                                (player-turn state actions click-state selected)
-                              (setf click-state _click-state)
-                              (setf selected _selected)
-                              ))
+                            (ia-turn state (get-ai 0 *gen*)))
+                            ; (multiple-value-bind (_click-state _selected)
+                            ;     (player-turn state actions click-state selected)
+                              ; (setf click-state _click-state)
+                              ; (setf selected _selected)))
                  )
 
 

@@ -3,7 +3,7 @@
 (defun init-gen (n)
   (let ((gen (make-list n)))
     (dotimes (i n)
-      (setf (nth i gen) (make-ai (pick-random) (pick-random))))
+      (setf (nth i gen) (make-ai 1.0 -1.0)))
     gen))
 
 (defun pick-random ()

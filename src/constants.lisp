@@ -50,4 +50,5 @@
 (defconstant +negative-infinity+ (- +positive-infinity+))
 
 ; search constants
-(defconstant +search-depth+ 5)
+(defconstant +search-depth+ 20)
+(defconstant +search-time+ 1)
