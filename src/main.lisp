@@ -62,7 +62,7 @@
 
         (format t "Welcome to the checkers-ai program, please select a difficulty mode:~%")
 
-        (let ((state (make-state (init-board) 0 -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
+        (let ((state (make-state (set-board) 0 -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
 
         ; polls events
           (sdl2:with-event-loop (:method :poll)

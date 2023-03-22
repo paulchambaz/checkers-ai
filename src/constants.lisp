@@ -17,6 +17,10 @@
 ; pixel size of an individual square off board
 (defconstant +size+ (/ (coerce (- +width+ (* 2 (+ +border+ +padding+))) 'float) +grid-size+))
 
+; value of the players
+(defconstant +white+ 0)
+(defconstant +black+ 1)
+
 ; value of the squares
 (defconstant +white-pawn+ 1)
 (defconstant +black-pawn+ 2)

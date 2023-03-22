@@ -18,3 +18,8 @@ test:
 
 clean:
 	@rm -f checkers-ai
+
+debug:
+	@sbcl --load checkers-ai.asd \
+		    --eval '(ql:quickload :checkers-ai)'
+
