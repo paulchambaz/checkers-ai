@@ -12,12 +12,11 @@
 ; the player that should play next
 ; the piece that has eaten (-1 if none)
 ; TODO the piece that has been eaten (-1 if none)
-(defun make-action (from to player eating eaten) (list from to player eating eaten))
+(defun make-action (from to player eaten) (list from to player eaten))
 (defun get-action-from (action) (nth 0 action))
 (defun get-action-to (action) (nth 1 action))
 (defun get-action-player (action) (nth 2 action))
-(defun get-action-eating (action) (nth 3 action))
-(defun get-action-eaten (action) (nth 4 action))
+(defun get-action-eaten (action) (nth 3 action))
 
 ; defining a state
 ; a state is defined as follows
@@ -52,11 +51,16 @@
 
 (defun set-board ()
   "Creates a new board and places random pieces"
-  (let ((board (make-list +nb-squares+ :initial-element 0)))
-    (setf (nth 56 board) +black-king+)
-    (setf (nth 49 board) +white-pawn+)
-    (setf (nth 62 board) +white-pawn+)
-    board))
+  (list 0 0 0 0 0 0 0 0; 0
+        0 0 2 0 2 0 0 0; 1
+        0 1 0 0 0 0 0 0; 2
+        0 0 0 0 0 0 0 0; 3
+        0 0 0 0 0 0 0 0; 4
+        2 0 0 0 0 0 0 0; 5 
+        0 1 0 1 0 0 0 0; 6
+        0 0 0 0 0 0 0 0; 7
+  )
+)
 
 (defun actions (state)
   "Returns the list of actions"
@@ -100,54 +104,57 @@
       (when (or (null actions)
                 (and (not (= (get-state-eating state) -1))
                      (null eating-actions)))
-        (setf actions (list (make-action -1 -1
-                                         (switch-player (get-state-player state))
-                                         -1 -1)))))
+        (setf actions (list (make-action -1 -1 (switch-player (get-state-player state)) -1)))))
     ; (print "end of board")
     ; finally we return the action
     actions))
 
 (defun result (action state)
-  "Changes the state from an action"
-  (when (not (= (get-action-to action) -1))
-    (let ((board (nth 0 state)) (player (nth 1 state)) (eating (nth 2 state)))
-      ; emtpy action
+  "Creates a new state from an action on a state"
+  (if (not (equal (get-action-to action) -1))
+    (progn 
+      ; set the action of the state
+      (setf (nth 1 state) (get-action-player action))
 
-      ; move to next square
-      (setf (nth (get-action-to action) (nth 0 state))
-            (nth (get-action-from action) (nth 0 state)))
+      ; move to piece to square
+      (setf (nth (get-action-to action) (nth 0 state)) (nth (get-action-from action) (nth 0 state)))
 
       ; empty previous square
       (setf (nth (get-action-from action) (nth 0 state)) 0)
 
       ; eating
-      (when (not (= (get-action-eating action) -1))
-        (setf (nth (get-action-eaten action) (nth 0 state)) 0))
+      (if (not (equal (get-action-eaten action) -1))
+        (progn
+          (setf (nth (get-action-eaten action) (nth 0 state)) 0)
+          ; set the eating of the state
+          (setf (nth 2 state) (get-action-to action))
+        )
+        ; set the eating of the state
+        (setf (nth 2 state) -1)
+      )
 
       ; white promotion
       (when (and (is-white-pawn (nth (get-action-to action) (nth 0 state)))
                  (< (get-action-to action) +grid-size+))
         (setf (nth (get-action-to action) (nth 0 state)) 3)
-        ; yield action to other player
-        (setf (nth 2 action) 1)
-        ; reset eaten
-        (setf (nth 3 action) -1))
+        (setf (nth 1 state) +black+)
+        (setf (nth 2 state) -1)
+      )
 
       ; black promotion
       (when (and (is-black-pawn (nth (get-action-to action) (nth 0 state)))
                  (>= (get-action-to action) (- +nb-squares+ +grid-size+)))
-        ; promoting
         (setf (nth (get-action-to action) (nth 0 state)) 4)
-        ; yield action to other player
-        (setf (nth 2 action) 0)
-        ; reset eaten
-        (setf (nth 3 action) -1))))
-
-  ; updating player
-  (setf (nth 1 state) (get-action-player action))
-  ; updating eating
-  (setf (nth 2 state) (get-action-eating action))
-  state)
+        (setf (nth 1 state) +white+)
+        (setf (nth 2 state) -1)
+      )
+    )
+    (progn
+      (setf (nth 1 state) (get-action-player action))
+      (setf (nth 2 state) -1)
+    )
+  )
+)
 
 ; TODO implement this as it is obviously better
 (defun undo (action state)
@@ -200,7 +207,7 @@
   "Returns the list of pawn move action"
   (let ((actions nil) (square (get-diagonal n direction diagonal)))
     (when (and square (is-empty (nth square (get-state-board state))))
-      (push (make-action n square 1 -1 -1) actions))
+      (push (make-action n square 1 -1) actions))
     actions))
 
 (defun white-pawn-eat (n state direction diagonal)
@@ -211,7 +218,7 @@
         (when ssquare
           (when (and (is-empty (nth ssquare (get-state-board state)))
                      (is-black (nth square (get-state-board state))))
-            (push (make-action n ssquare 0 ssquare square) actions)))))
+            (push (make-action n ssquare 0 square) actions)))))
     actions))
 
 (defun white-king-move (n state direction diagonal)
@@ -220,7 +227,7 @@
     (labels ((recursive-move (position)
                (let ((square (get-diagonal position direction diagonal)))
                  (when (and square (is-empty (nth square (get-state-board state))))
-                   (push (make-action n square 1 -1 -1) actions)
+                   (push (make-action n square 1 -1) actions)
                    (recursive-move square)))))
       (recursive-move n))
     actions))
@@ -240,7 +247,7 @@
              (recursive-move (position initial)
                (let ((ssquare (get-diagonal position direction diagonal)))
                  (when (and ssquare (is-empty (nth ssquare (get-state-board state))))
-                   (push (make-action n ssquare 0 ssquare initial) actions)
+                   (push (make-action n ssquare 0 initial) actions)
                    (recursive-move ssquare initial)))))
       (let ((square (recursive-eat n)))
         (when square
@@ -253,7 +260,7 @@
   "Returns the list of pawn move action"
   (let ((actions nil) (square (get-diagonal n direction diagonal)))
     (when (and square (is-empty (nth square (get-state-board state))))
-      (push (make-action n square 0 -1 -1) actions))
+      (push (make-action n square 0 -1) actions))
     actions))
 
 (defun black-pawn-eat (n state direction diagonal)
@@ -264,7 +271,7 @@
         (when ssquare
           (when (and (is-empty (nth ssquare (get-state-board state)))
                      (is-white (nth square (get-state-board state))))
-            (push (make-action n ssquare 1 ssquare square) actions)))))
+            (push (make-action n ssquare 1 square) actions)))))
     actions))
 
 (defun black-king-move (n state direction diagonal)
@@ -273,7 +280,7 @@
     (labels ((recursive-move (position)
                (let ((square (get-diagonal position direction diagonal)))
                  (when (and square (is-empty (nth square (get-state-board state))))
-                   (push (make-action n square 0 -1 -1) actions)
+                   (push (make-action n square 0 -1) actions)
                    (recursive-move square)))))
       (recursive-move n))
     actions))
@@ -293,7 +300,7 @@
              (recursive-move (position initial)
                (let ((ssquare (get-diagonal position direction diagonal)))
                  (when (and ssquare (is-empty (nth ssquare (get-state-board state))))
-                   (push (make-action n ssquare 1 ssquare initial) actions)
+                   (push (make-action n ssquare 1 initial) actions)
                    (recursive-move ssquare initial)))))
       (let ((square (recursive-eat n)))
         (when square
@@ -312,15 +319,19 @@
     ; white king movements
     (when (is-white-king (nth n (get-state-board state)))
       (setf actions (append actions (white-king-actions n state))))
+
     ; white pawn movements
     (when (is-white-pawn (nth n (get-state-board state)))
       (setf actions (append actions (white-pawn-actions n state))))
+
     ; black king movements
     (when (is-black-king (nth n (get-state-board state)))
       (setf actions (append actions (black-king-actions n state))))
+
     ; black pawn movements
     (when (is-black-pawn (nth n (get-state-board state)))
       (setf actions (append actions (black-pawn-actions n state))))
+
     ; (print n)
     ; (print actions)
     actions))
@@ -344,7 +355,7 @@
 (defun select-eating (actions)
   "Select only actions that do eat"
   (remove-if-not #'(lambda (action)
-                     (not (= (get-action-eating action) -1))) actions))
+                     (not (= (get-action-eaten action) -1))) actions))
 
 (defun get-pieces (board)
   "Creates a list of pieces on the board with format (:n n :id id)"

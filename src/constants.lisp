@@ -1,9 +1,9 @@
 (in-package :checkers-ai)
 
 ; pixel width of the window
-(defconstant +width+ 600)
+(defconstant +width+ 720)
 ; pixel height of the window
-(defconstant +height+ 600)
+(defconstant +height+ 720)
 
 ; pixel padding size around the board
 (defconstant +padding+ 30)
@@ -45,10 +45,6 @@
   (when (or (= x -1) (= y -1)) (return-from get-square -1))
   (+ (* y +grid-size+) x))
 
-; math constants
-(defconstant +positive-infinity+ 2147483647)
-(defconstant +negative-infinity+ (- +positive-infinity+))
-
 ; search constants
-(defconstant +search-depth+ 20)
-(defconstant +search-time+ 1)
+(defconstant +search-depth+ 64)
+(defconstant +search-time+ 0.5)

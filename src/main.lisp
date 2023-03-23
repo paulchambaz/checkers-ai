@@ -99,13 +99,13 @@
                               (setf click-state t-click-state)
                               (setf selected t-selected)))
 
-                     ; ; turn of the ia
+                     ; turn of the ia
                      (progn
                             (ia-turn state (get-ai 0 *gen*)))
                             ; (multiple-value-bind (_click-state _selected)
                             ;     (player-turn state actions click-state selected)
-                              ; (setf click-state _click-state)
-                              ; (setf selected _selected)))
+                            ;   (setf click-state _click-state)
+                            ;   (setf selected _selected)))
                  )
 
 

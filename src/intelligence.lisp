@@ -3,159 +3,67 @@
 (defun ai-search (state depth ai)
   (let ((actions (actions state)))
     (if (equal (list-length actions) 1)
-        ; if only one move is possible no need to search
-        (values 0 (nth 0 actions))
-        ; else we start iterative alpha beta search
-        (iterative-alpha-beta-search state depth ai))))
+      (values 0 (nth 0 actions))
+      (iterative-alpha-beta-search state depth ai)
+    )
+  )
+)
 
 (defun iterative-alpha-beta-search (state depth ai)
-  (let ((value nil) (move nil) (final-depth nil))
-    (let ((player (to-move state)) (time (get-internal-run-time)))
-      (let ((max-time (+ time (* +search-time+ 1000000))))
-        (dotimes (n depth)
-          (when (< time max-time)
-            (multiple-value-bind (_value _move)
-                (max-value (copy-state state) +negative-infinity+ +positive-infinity+ player 0 n time max-time ai)
-              (setf time (get-internal-run-time))
-              (setf value _value)
-              (setf move _move)
-              (setf final-depth n))))
-        (if (equal player 0)
-            (format t "White ")
-            (format t "Black "))
-        (format t "reached a depth of ~a in ~ams " final-depth (floor (- time (- max-time (* 1 1000000))) 1000))
-        (format t "- value: ~a move: ~a~%" value move)
-        (values value move)))))
-
-(defun alpha-beta-search (state depth ai)
-  (let ((player (to-move state)) (time (get-internal-run-time)))
-    (multiple-value-bind (value move)
-        ; for default alpha beta search we give it 1M seconds, since it is a
-        ; DFS we cannot guarantee that it will return the best result. this
-        ; fake limit is just a way to make sure it does - we will not be using
-        ; depth with this algorithm that would take longer than 1M seconds
-        (max-value (copy-state state) +negative-infinity+ +positive-infinity+ player 0 depth time (+ time (* 1000000 1000000)) ai)
-      (values value move))))
-
-(defun max-value (state alpha beta init-player depth max-depth time max-time ai)
-  ; return clause
-  (if (> time max-time)
-      (values (utility state init-player ai) nil)
-      (if (= depth max-depth)
-          (values (utility state init-player ai) nil)
-          (let ((v +negative-infinity+) (move nil))
-            ; gets the list of actions
-            (dolist (a (actions state))
-              (let ((result (result a (copy-state state))))
-                ; is it the init-player's turn to play
-                (if (= (to-move result) init-player)
-                    ; it is
-                    (multiple-value-bind (v2 a2)
-                        ; recursive call
-                        (max-value result alpha beta init-player (+ depth 1) max-depth (get-internal-run-time) max-time ai)
-                      (when (> v2 v) 
-                        (setf v v2)
-                        (setf move a)
-                        (setf alpha (max alpha v))
-                        )
-                      (when (>= v beta) return (values v move))
-                      )
-                    ; it is not
-                    (multiple-value-bind (v2 a2)
-                        ; recursive call
-                        (min-value result alpha beta init-player (+ depth 1) max-depth (get-internal-run-time) max-time ai)
-                      (when (> v2 v) 
-                        (setf v v2)
-                        (setf move a)
-                        (setf beta (min beta v))
-                        )
-                      (when (<= v alpha) return (values v move))
-                      )
-                  )
-                )
-              )
-            (values v move)
-            )
+  (let ((value nil) (move nil) (player (to-move state))
+        (max-time (+ (get-internal-run-time) (* +search-time+ 1000000)))
+        (max-depth 0) (history (make-hash-table :test #'action-test-function :hash-function #'action-hash-function))
+        (killer-moves (make-array depth :initial-element (make-array 2 :initial-element (make-array 2 :initial-element nil)))))
+    (dotimes (n depth)
+      (when (< (get-internal-run-time) max-time)
+        ; (format t  "~a~%" (+ n 1))
+        (multiple-value-bind (v m) (max-value state most-negative-fixnum most-positive-fixnum player (+ n 1) max-time ai history killer-moves)
+          (setf value v)
+          (setf move m)
+          (setf max-depth (+ n 1))
         )
+      )
     )
+    (if (equal (to-move state) +white+)
+      (format t "white ")
+      (format t "black "))
+    (format t "value: ~a depth: ~a~%" value max-depth)
+    (values value move)
+  )
 )
 
-(defun min-value (state alpha beta init-player depth max-depth time max-time ai)
-  ; return clause
-  (if (> time max-time)
-      (values (utility state init-player ai) nil)
-      (if (= depth max-depth)
-          (values (utility state init-player ai) nil)
-          (let ((v +positive-infinity+) (move nil))
-            ; gets the list of actions
-            (dolist (a (actions state))
-              (let ((result (result a (copy-state state))))
-                ; is it the init-player's turn to play
-                (if (= (to-move result) init-player)
-                    ; it is
-                    (multiple-value-bind (v2 a2)
-                        ; recursive call
-                        (max-value result alpha beta init-player (+ depth 1) max-depth (get-internal-run-time) max-time ai)
-                      (when (< v2 v) 
-                        (setf v v2)
-                        (setf move a)
-                        (setf alpha (max alpha v))
-                        )
-                      (when (>= v beta) return (values v move))
-                      )
-                    ; it is not
-                    (multiple-value-bind (v2 a2)
-                        ; recursive call
-                        (min-value result alpha beta init-player (+ depth 1) max-depth (get-internal-run-time) max-time ai)
-                      (when (< v2 v) 
-                        (setf v v2)
-                        (setf move a)
-                        (setf beta (min beta v))
-                        )
-                      (when (<= v alpha) return (values v move))
-                      )
-                  )
-                )
-              )
-            (values v move)
-            )
-        )
-    )
-)
-
-(defun minimax-search (state depth ai)
-  (let ((player (to-move state)))
-    (multiple-value-bind (value move)
-                         (max-value-minimax (copy-state state) player 0 depth ai)
-      (values value move))))
-
-(defun max-value-minimax (state init-player depth max-depth ai)
-  ; return clause
-  (if (= depth max-depth)
+(defun max-value (state alpha beta init-player depth max-time ai history killer-moves)
+  ; (format t "max~%")
+  (if (or (equal depth 0) (> (get-internal-run-time) max-time))
     (values (utility state init-player ai) nil)
-    (let ((v +negative-infinity+) (move nil))
-      ; gets the list of actions
-      (dolist (a (actions state))
-        (let ((result (result a (copy-state state))))
-          ; is it the init-player's turn to play
-          (if (= (to-move result) init-player)
-            ; it is
-            (multiple-value-bind (v2 a2)
-                ; recursive call
-                (max-value-minimax result init-player (+ depth 1) max-depth ai)
-              (when (> v2 v) 
+    (let ((v most-negative-fixnum) (move nil) (actions (order-moves (actions state) (to-move state) depth history killer-moves)) (result (copy-state state)))
+      (dolist (a actions)
+        (result a result)
+        (if (equal (to-move result) init-player)
+          (progn
+            (multiple-value-bind (v2 a2) (max-value result alpha beta init-player (- depth 1) max-time ai history killer-moves)
+              (when (> v2 v)
                 (setf v v2)
                 (setf move a)
+                (setf alpha (max alpha v))
               )
+              (when (>= v beta)
+                (update-history a history)
+                (update-killer-moves a (to-move state) depth killer-moves history)
+                (return-from max-value (values v move)))
             )
-            ; it is not
-            (multiple-value-bind (v2 a2)
-                ; recursive call
-                (min-value-minimax result init-player (+ depth 1) max-depth ai)
-              (when (> v2 v) 
+          )
+          (progn
+            (multiple-value-bind (v2 a2) (min-value result alpha beta init-player (- depth 1) max-time ai history killer-moves)
+              (when (> v2 v)
                 (setf v v2)
                 (setf move a)
+                (setf alpha (max alpha v))
               )
+              (when (>= v beta)
+                (update-history a history)
+                (update-killer-moves a (to-move state) depth killer-moves history)
+                (return-from max-value (values v move)))
             )
           )
         )
@@ -165,33 +73,38 @@
   )
 )
 
-(defun min-value-minimax (state init-player depth max-depth ai)
-  ; return clause
-  (if (= depth max-depth)
+(defun min-value (state alpha beta init-player depth max-time ai history killer-moves)
+  ; (format t "min~%")
+  (if (or (equal depth 0) (> (get-internal-run-time) max-time))
     (values (utility state init-player ai) nil)
-    (let ((v +positive-infinity+) (move nil))
-      ; gets the list of actions
-      (dolist (a (actions state))
-        (let ((result (result a (copy-state state))))
-          ; is it the init-player's turn to play
-          (if (= (to-move result) init-player)
-            ; it is
-            (multiple-value-bind (v2 a2)
-                ; recursive call
-                (max-value-minimax result init-player (+ depth 1) max-depth ai)
-              (when (< v2 v) 
+    (let ((v most-positive-fixnum) (move nil) (actions (order-moves (actions state) (to-move state) depth history killer-moves)) (result (copy-state state)))
+      (dolist (a actions)
+        (result a result)
+        (if (equal (to-move result) init-player)
+          (progn
+            (multiple-value-bind (v2 a2) (max-value result alpha beta init-player (- depth 1) max-time ai history killer-moves)
+              (when (< v2 v)
                 (setf v v2)
                 (setf move a)
+                (setf beta (min beta v))
               )
+              (when (<= v alpha)
+                (update-history a history)
+                (update-killer-moves a (to-move state) depth killer-moves history)
+                (return-from min-value (values v move)))
             )
-            ; it is not
-            (multiple-value-bind (v2 a2)
-                ; recursive call
-                (min-value-minimax result init-player (+ depth 1) max-depth ai)
-              (when (< v2 v) 
+          )
+          (progn
+            (multiple-value-bind (v2 a2) (min-value result alpha beta init-player (- depth 1) max-time ai history killer-moves)
+              (when (< v2 v)
                 (setf v v2)
                 (setf move a)
+                (setf beta (min beta v))
               )
+              (when (<= v alpha)
+                (update-history a history)
+                (update-killer-moves a (to-move state) depth killer-moves history)
+                (return-from min-value (values v move)))
             )
           )
         )
@@ -200,20 +113,122 @@
     )
   )
 )
+
+(defun order-moves (actions player depth history killer-moves)
+  (let ((sorted-moves actions))
+
+    (when (equal player +black+)
+      (setf sorted-moves (reverse sorted-moves))
+    )
+
+    (stable-sort sorted-moves (lambda (a1 a2) (compare-frequencies a1 a2 history)))
+  )
+)
+
+(defun update-history (action history)
+  (let ((frequency (gethash action history)))
+    (if frequency
+        (setf (gethash action history) (+ frequency 1))
+        (setf (gethash action history) 0)
+    )
+  )
+)
+
+(defun update-killer-moves (action player depth killer-moves history)
+
+  ; (format t "action: ~a player: ~a~%" action player)
+
+  (let ((current-killer-moves (aref (aref killer-moves depth) player)) (action-frequency(gethash action history 0)) (replace-index -1) (lowest-frequency most-positive-fixnum))
+
+    (dotimes (i (length current-killer-moves))
+      (when (equal (aref current-killer-moves i) action)
+        (return-from update-killer-moves)
+      )
+    )
+
+    (dotimes (i (length current-killer-moves))
+      (let ((move (aref current-killer-moves i)))
+        (if move
+          (let ((move-frequency (gethash move history most-positive-fixnum)))
+            (when (< move-frequency lowest-frequency)
+              (setf lowest-frequency move-frequency)
+              (setf replace-index i)
+            )
+          )
+          (progn
+            (setf replace-index i)
+            (return)
+          )
+        )
+      )
+    )
+
+    (when (>= replace-index 0)
+      (setf (aref current-killer-moves replace-index) action)
+    )
+  )
+)
+
+(defun compare-frequencies (a1 a2 history)
+  (> (gethash a1 history 0) (gethash a2 history 0)))
+
+(defun action-hash-function (action)
+  (+ (* 31 (get-action-from action))
+     (* 37 (get-action-to action))
+     (* 41 (get-action-player action))
+     (* 43 (get-action-eaten action))))
+
+(defun action-test-function (a1 a2)
+  (and (equal (get-action-from a1) (get-action-from a2))
+       (equal (get-action-to a1) (get-action-to a2))
+       (equal (get-action-player a1) (get-action-player a2))
+       (equal (get-action-eaten a1) (get-action-eaten a2))))
+
+
+
+
+
+
+
+
+
+
 
 (defun utility (state player ai)
   "Utility function of the algorithm"
-  ; (format t "utility~%")
-  ; (format t "~a~%" ai)
-  (+ (* (get-weight 0 ai) (count-pawn state player))
-     (* (get-weight 1 ai) (count-pawn state (switch-player player)))
-     ))
+  (let ((state-copy-player (copy-state state))
+        (state-copy-ennemy (copy-state state)))
+    (setf (nth 1 state-copy-player) player)
+    (setf (nth 1 state-copy-ennemy) (switch-player player))
+    (let ((actions-player (actions state-copy-player))
+          (actions-ennemy (actions state-copy-ennemy)))
+      (let ((utility 
+              (+ (* (get-weight 0 ai) (count-pawn state player))
+                 (* (get-weight 1 ai) (count-pawn state (switch-player player)))
+                 (* (get-weight 2 ai) (count-king state player))
+                 (* (get-weight 3 ai) (count-king state (switch-player player)))
+                 (* (get-weight 4 ai) (count-mobility actions-player))
+                 (* (get-weight 5 ai) (count-mobility actions-ennemy))
+                 )))
+        ; (format t "utility: ~a~%" utility)
+        utility))))
 
 (defun count-pawn (state player)
-  "Counts the number of pieces of a player"
-  ; (format t "count-pawn~%")
-  (if (= player 0)
+  "Counts the number of pawns of a player"
+  (if (= player +white+)
     (count +white-pawn+ (get-state-board state))
-    (count +black-pawn+ (get-state-board state))
-  )
-)
+    (count +black-pawn+ (get-state-board state))))
+
+(defun count-king (state player)
+  "Counts the number of kings of a player"
+  (if (= player +white+)
+      (count +white-king+ (get-state-board state))
+      (count +black-king+ (get-state-board state))))
+
+(defun count-mobility (actions)
+  "Counts the number of moves available to a player"
+    (list-length actions))
+
+; (defun count-safe-kings (state player)
+;   "Count the number of safe kings the player has"
+;   (
