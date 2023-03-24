@@ -51,63 +51,26 @@
 
 (defun set-board ()
   "Creates a new board and places random pieces"
-  (list 0 0 0 0 0 0 0 0; 0
-        0 0 2 0 2 0 0 0; 1
-        0 1 0 0 0 0 0 0; 2
-        0 0 0 0 0 0 0 0; 3
-        0 0 0 0 0 0 0 0; 4
-        2 0 0 0 0 0 0 0; 5 
-        0 1 0 1 0 0 0 0; 6
-        0 0 0 0 0 0 0 0; 7
+  (list 0 0 0 0 0 3 0 0; 0
+        0 0 0 0 0 0 0 0; 1
+        0 0 0 0 0 0 0 0; 2
+        0 0 0 0 0 0 1 0; 3
+        0 0 0 0 0 0 0 1; 4
+        0 0 0 0 0 0 1 0; 5 
+        0 0 0 0 0 0 0 0; 6
+        4 0 1 0 0 0 0 0; 7
   )
 )
 
 (defun actions (state)
-  "Returns the list of actions"
-  ; if a piece must eat then we return its actions
-  (let ((actions nil))
-    (when (not (= (get-state-eating state) -1))
-        (setf actions (append actions (get-piece-actions
-                                        (get-state-eating state)
-                                        state))))
-    (when (= (get-state-eating state) -1)
-
-      ; we want to get all the pieces of the player playing and append their
-      ; actions to the action list
-      (when (= (get-state-player state) 0)
-        (dolist (white-pawn 
-                  (append (get-white-pawns (get-state-board state))
-                          (get-white-kings (get-state-board state))))
-          (setf actions (append actions (get-piece-actions
-                                          (getf white-pawn :n)
-                                          state)))))
-      (when (= (get-state-player state) 1)
-        (dolist (black-pawn 
-                  (append (get-black-pawns (get-state-board state))
-                          (get-black-kings (get-state-board state))))
-          (setf actions (append actions (get-piece-actions
-                                          (getf black-pawn :n)
-                                          state))))))
-
-    ; force the player to only use eating actions if they are available
-    (let ((eating-actions (select-eating actions)))
-      (when eating-actions (setf actions eating-actions))
-
-      ; TODO this is not true in the case of a stalemate -> if that is the case
-      ; then the player that cant do actions - we should add a check that there
-      ; are no actions and we have to eat
-
-      ; if there are no actions available then we create one that simply
-      ; switches the player
-      ; if we need to eat and there are no eating actions then we want to setf
-      ; actions to 
-      (when (or (null actions)
-                (and (not (= (get-state-eating state) -1))
-                     (null eating-actions)))
-        (setf actions (list (make-action -1 -1 (switch-player (get-state-player state)) -1)))))
-    ; (print "end of board")
-    ; finally we return the action
-    actions))
+  "Return the list of actions"
+  (if (equal (get-state-eating state) -1)
+      (let ((actions (mapcan (lambda (piece) (get-piece-actions (getf piece :n) state)) (if (equal (get-state-player state) +white+) (get-whites (get-state-board state)) (get-blacks (get-state-board state))))))
+        (or (select-eating actions) actions))
+      (or (select-eating (get-piece-actions (get-state-eating state) state))
+          (list (make-action -1 -1 (switch-player (get-state-player state)) -1)))
+  )
+)
 
 (defun result (action state)
   "Creates a new state from an action on a state"
@@ -160,6 +123,13 @@
 (defun undo (action state)
   "Invert the change of state from an action"
   state)
+
+(defun black-terminal-test (state)
+  (equal (list-length (get-blacks (get-state-board state))) 0))
+
+(defun white-terminal-test (state)
+  (equal (list-length (get-whites (get-state-board state))) 0))
+      
 
 (defun white-pawn-actions (n state)
   "Returns the list of white pawn actions"

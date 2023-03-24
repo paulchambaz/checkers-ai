@@ -46,5 +46,5 @@
   (+ (* y +grid-size+) x))
 
 ; search constants
-(defconstant +search-depth+ 64)
+(defconstant +search-depth+ 20)
 (defconstant +search-time+ 0.5)

@@ -40,6 +40,35 @@
   (multiple-value-bind (value move) (ai-search state +search-depth+ ai)
     (result move state)))
 
+(defun end (state actions)
+  (when (and (white-terminal-test state))
+    (format t "black won no pieces available~%")
+    (sdl2:push-event :quit)
+    (return-from end T)
+    )
+
+  (when (and (black-terminal-test state))
+    (format t "white won no pieces available~%")
+    (sdl2:push-event :quit)
+    (return-from end T)
+    )
+
+  (when (and (not actions)
+             (equal (get-state-player state) +white+))
+    (format t "black won no moves available~%")
+    (sdl2:push-event :quit)
+    (return-from end T)
+    )
+
+  (when (and (not actions)
+             (equal (get-state-player state) +black+))
+    (format t "white won no moves available~%")
+    (sdl2:push-event :quit)
+    (return-from end T)
+    )
+)
+
+
 (defun main ()
   (setf *random-state* (make-random-state t))
   (compute-diagonals)
@@ -58,7 +87,7 @@
 
         (format t "Welcome to the checkers-ai program, please select a difficulty mode:~%")
 
-        (let ((state (make-state (init-board) 0 -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
+        (let ((state (make-state (set-board) +white+ -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
 
         ; polls events
           (sdl2:with-event-loop (:method :poll)
@@ -77,56 +106,58 @@
 
                (let ((actions (actions state)))
 
-                 (clear renderer)
-                 (draw-checker renderer)
+                 (when (not (end state actions))
 
-                 (when (= click-state 0)
-                   (hint-actions-from actions renderer))
+                   (clear renderer)
+                   (draw-checker renderer)
 
-                 (when (= click-state 1)
-                   (hint-actions-to (select-from selected actions) renderer))
+                   (when (= click-state 0)
+                     (hint-actions-from actions renderer))
 
-                 (draw-pieces (get-state-board state) renderer)
-                 (sdl2:render-present renderer)
+                   (when (= click-state 1)
+                     (hint-actions-to (select-from selected actions) renderer))
 
-                 (if (= (get-state-player state) 0)
+                   (draw-pieces (get-state-board state) renderer)
+                   (sdl2:render-present renderer)
 
-                     ; turn of the player
-                     (progn 
-                            ; (ia-turn state (get-ai 1 *gen*)))
-                            (multiple-value-bind (t-click-state t-selected)
-                                (player-turn state actions click-state selected)
-                              (setf click-state t-click-state)
-                              (setf selected t-selected)))
+                   (if (= (get-state-player state) 0)
 
-                     ; turn of the ia
-                     (progn
-                            (ia-turn state (get-ai 0 *gen*)))
-                            ; (multiple-value-bind (_click-state _selected)
-                            ;     (player-turn state actions click-state selected)
-                            ;   (setf click-state _click-state)
-                            ;   (setf selected _selected)))
-                 )
+                       ; turn of the player
+                       (progn 
+                              ; (ia-turn state (get-ai 1 *gen*)))
+                              (multiple-value-bind (t-click-state t-selected)
+                                  (player-turn state actions click-state selected)
+                                (setf click-state t-click-state)
+                                (setf selected t-selected)))
+
+                       ; turn of the ia
+                       (progn
+                              ; (ia-turn state (get-ai 0 *gen*)))
+                              (multiple-value-bind (_click-state _selected)
+                                  (player-turn state actions click-state selected)
+                                (setf click-state _click-state)
+                                (setf selected _selected)))
+                   )
 
 
-                 (setf actions (actions state))
+                   (setf actions (actions state))
 
-                 ; time to draw
+                   ; time to draw
 
-                 (clear renderer)
-                 (draw-checker renderer)
+                   (clear renderer)
+                   (draw-checker renderer)
 
-                 (when (= click-state 0)
-                   (hint-actions-from actions renderer))
+                   (when (= click-state 0)
+                     (hint-actions-from actions renderer))
 
-                 (when (= click-state 1)
-                   (hint-actions-to (select-from selected actions) renderer))
+                   (when (= click-state 1)
+                     (hint-actions-to (select-from selected actions) renderer))
 
-                 (draw-pieces (get-state-board state) renderer)
-                 (sdl2:render-present renderer)
+                   (draw-pieces (get-state-board state) renderer)
+                   (sdl2:render-present renderer)
 
-                 (setf *prev-mouse* *mouse*)
+                   (setf *prev-mouse* *mouse*)
 
-                 (sdl2:delay 16))))
+                   (sdl2:delay 16)))))
             (:quit () t)))))))
 

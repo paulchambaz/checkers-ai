@@ -37,6 +37,7 @@
   (if (or (equal depth 0) (> (get-internal-run-time) max-time))
     (values (utility state init-player ai) nil)
     (let ((v most-negative-fixnum) (move nil) (actions (order-moves (actions state) (to-move state) depth history killer-moves)) (result (copy-state state)))
+      ; if list of action is empty we should return (values most-negative-fixnum nil) that means that this is a stalemate which means it is a lost
       (dolist (a actions)
         (result a result)
         (if (equal (to-move result) init-player)

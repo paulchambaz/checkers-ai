@@ -5,13 +5,13 @@
     (dotimes (i n)
       (setf (nth i gen) (list
                           30    ; our pawns
-                          -30   ; their pawns
-                          100   ; our kings
-                          -100  ; their kings
+                          0   ; their pawns
+                          0   ; our kings
+                          0  ; their kings
                           0    ; our mobility
                           -0   ; their mobility
-                          15    ; our safe kings
-                          -15   ; their safe kings
+                          0    ; our safe kings
+                          0   ; their safe kings
                           )))
     gen))
 
