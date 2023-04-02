@@ -21,7 +21,7 @@ full-clean:
 
 build: c lisp
 	@mkdir checkers-ia-bouhabei-chambaz
-	@cp -r c lisp release README.md checkers-ia-bouhabei-chambaz
+	@cp -r c lisp release README.md Makefile checkers-ia-bouhabei-chambaz
 	@cp paper/compte_rendu.pdf checkers-ia-bouhabei-chambaz/
 	@zip -r checkers-ia-bouhabei-chambaz.zip checkers-ia-bouhabei-chambaz
 	@rm -fr checkers-ia-bouhabei-chambaz
