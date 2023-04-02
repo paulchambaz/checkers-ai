@@ -1,25 +1,14 @@
-run:
-	@sbcl --load checkers-ai.asd \
-		    --eval '(ql:quickload :checkers-ai)' \
-				--eval '(checkers-ai:main)' \
-				--eval '(exit)'
+c: clean
+	@make -C c/build build
+	@mv c/checkers-ai release/c/checkers-ai
+	@cp -r c/data release/c/data
 
-build: clean
-	@sbcl --non-interactive \
-				--load checkers-ai.asd \
-		    --eval '(ql:quickload :checkers-ai)' \
-				--eval '(asdf:make :checkers-ai)'
+lisp: clean
+	@make -C lisp build
+	@mv lisp/checkers-ai release/lisp/checkers-ai
+	@cp -r lisp/data release/lisp/data
 
-test:
-	@sbcl --non-interactive \
-				--load checkers-ai.asd \
-				--eval '(ql:quickload :checkers-ai)' \
-				--eval '(asdf:test-system :checkers-ai)'
+paper: clean
+	@make -C paper doc
 
 clean:
-	@rm -f checkers-ai
-
-debug:
-	@sbcl --load checkers-ai.asd \
-		    --eval '(ql:quickload :checkers-ai)'
-
