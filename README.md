@@ -39,4 +39,44 @@ Here is a guide on how to compile and run the programs.
 
 ### For the c program
 
+Here are the dependencies required to compile this project:
+
+```
+gcc
+sdl2 library
+```
+
+Once everything is installed, you can run in this directory : 
+
+```bash
+make c
+```
+
+And have the binaries in release.
+
 ### For the lisp program
+
+Here are the dependencies required to compile this project:
+
+```
+sbcl
+quicklisp
+```
+
+You also need to have these lines configured in your `.sbclrc`.
+
+```lisp
+#-quicklisp
+(let ((quicklisp-init (merge-pathnames "~/.config/lisp/quicklisp/setup.lisp"
+                                       (user-homedir-pathname))))
+  (when (probe-file quicklisp-init)
+    (load quicklisp-init)))
+```
+
+Once everything is installed, you can run in this directory : 
+
+```bash
+make lisp
+```
+
+And have the binaries in release.
