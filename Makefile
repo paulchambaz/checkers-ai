@@ -1,9 +1,11 @@
 c: clean
+	@mkdir -p release/c
 	@make -C c/build build
 	@mv c/checkers-ai release/c
 	@cp -r c/data release/c
 
 lisp: clean
+	@mkdir -p release/lisp
 	@make -C lisp build
 	@mv lisp/checkers-ai release/lisp
 	@cp -r lisp/data release/lisp
@@ -14,10 +16,7 @@ paper: clean
 clean:
 
 full-clean:
-	@rm -fr release/c/checkers-ai
-	@rm -fr release/c/data
-	@rm -fr release/lisp/checkers-ai
-	@rm -fr release/lisp/data
+	@rm -fr release
 
 build: c lisp
 	@mkdir checkers-ia-bouhabei-chambaz
