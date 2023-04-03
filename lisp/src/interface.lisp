@@ -31,7 +31,7 @@
   (list (get-pos-dim mouse-x +width+) (get-pos-dim mouse-y +height+)))
 
 (defun draw-checker (renderer)
-  "Displays a ch72ker board to the renderer"
+  "Displays a checker board to the renderer"
   ; first we print the background of the checker board
   (sdl2:set-render-draw-color renderer 25 25 25 255)
   (sdl2:render-fill-rect renderer (sdl2:make-rect 0 0 +width+ +height+))

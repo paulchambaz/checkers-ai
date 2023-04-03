@@ -49,3 +49,10 @@
 (defconstant +search-depth+ 32)
 (defconstant +search-time+ 10)
 ; (defconstant +search-time+ 0.5)
+
+; traning constant
+(defconstant gen-size 100)
+(defconstant set-number 20)
+(defconstant dna-size 20)
+(defconstant initial-variation 1.0)
+(defconstant generation-variation 0.1)

@@ -15,7 +15,7 @@
         (max-depth 0) (history (make-hash-table :test #'action-test-function :hash-function #'action-hash-function))
         (killer-moves (make-array depth :initial-element (make-array 2 :initial-element (make-array 2 :initial-element nil)))))
     ; (dotimes (n depth)
-    (let ((n 2))
+    (let ((n 12))
       (when (< (get-internal-run-time) max-time)
         ; (format t  "~a~%" (+ n 1))
         (multiple-value-bind (v m) (max-value state most-negative-fixnum most-positive-fixnum player (+ n 1) max-time ai history killer-moves)
@@ -229,6 +229,6 @@
   "Counts the number of moves available to a player"
     (list-length actions))
 
-; (defun count-safe-kings (state player)
+; (defun count-safe-checkers (state player)
 ;   "Count the number of safe kings the player has"
 ;   (
