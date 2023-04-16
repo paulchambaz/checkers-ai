@@ -123,17 +123,17 @@
 (defun hint-actions (actions renderer)
   "Hints all member of an action list"
   (dolist (action actions)
-    (draw-hint (get-action-to action) renderer)))
+    (draw-hint (action-to action) renderer)))
 
 (defun hint-actions-from (actions renderer)
   "Hints all member of an action list"
   (dolist (action actions)
-    (draw-hint (get-action-from action) renderer)))
+    (draw-hint (action-from action) renderer)))
 
 (defun hint-actions-to (actions renderer)
   "Hints all member of an action list"
   (dolist (action actions)
-    (draw-hint (get-action-to action) renderer)))
+    (draw-hint (action-to action) renderer)))
 
 (defun mouse-pressed ()
   (and (not (null *mouse*)) (null *prev-mouse*)))

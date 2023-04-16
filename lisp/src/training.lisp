@@ -151,10 +151,10 @@
 ; TODO this needs to be rewritten as it is pretty cringe for now - we really do need to reach a terminal condition in order to be sure we are done
 ; we can set an arbitrary number of turn to something like 512 - in which case the match will be a draw - just in case we reach some long matches and 
 (defun match (white black)
-  (let ((state (make-state (init-board) 0 -1)))
+  (let ((state (make-state :board (init-board) :player +white+ :eating -1)))
     (dotimes (i 100)
-      (ai-turn state white)
-      (ai-turn state black))
+      (ia-turn state white)
+      (ia-turn state black))
     (when (> (utility state 0 white) (utility state 1 black))
       1)
     (when (< (utility state 0 white) (utility state 1 black))
