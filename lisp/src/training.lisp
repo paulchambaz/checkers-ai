@@ -148,7 +148,7 @@
 (defun get-weight (n ai)
   (nth n ai))
 
-; TODO this needs to be rewritten as it is pretty cringe for now - we really do need to reach a terminal condition in order to be sure we are done
+; TODO: this needs to be rewritten as it is pretty cringe for now - we really do need to reach a terminal condition in order to be sure we are done
 ; we can set an arbitrary number of turn to something like 512 - in which case the match will be a draw - just in case we reach some long matches and 
 (defun match (white black)
   (let ((state (make-state :board (init-board) :player +white+ :eating -1)))

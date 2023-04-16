@@ -5,9 +5,6 @@
 (defvar *black-left-diagonals* nil)
 (defvar *black-right-diagonals* nil)
 
-
-; TODO replace all this with a defstruct
-
 (defstruct action
   "An action is a single movement on the board"
   from   ; the square from which the movement starts
@@ -23,7 +20,7 @@
 
 (defun init-board ()
   "Creates a new board and places the pieces"
-  ; TODO half the squares are not used so it would lead to better memory use to
+  ; TODO: half the squares are not used so it would lead to better memory use to
   ; not store them
   ; intializes the board as a list of grid-square^2 elements
   (let ((board (make-list +nb-squares+ :initial-element 0)))
@@ -54,7 +51,7 @@
 
 (defun actions (state)
   "Return the list of actions"
-  ; (format t "actions~%")
+  (format t "actions~%")
   (if (equal (state-eating state) -1)
       (let ((actions (mapcan (lambda (piece) (get-piece-actions (getf piece :n) state)) (if (equal (state-player state) +white+) (get-whites (state-board state)) (get-blacks (state-board state))))))
         (or (select-eating actions) actions))
@@ -79,6 +76,7 @@
 
         ; empty previous square
         (setf (nth (action-from action) (state-board ret-state)) 0)
+        (format t "empty previous square~%")
 
         ; eating
         (if (not (equal (action-eaten action) -1))
@@ -90,6 +88,7 @@
           ; set the eating of the ret-state
           (setf (state-eating ret-state) -1)
         )
+        (format t "eating action~%")
 
         ; white promotion
         (when (and (is-white-pawn (nth (action-to action) (state-board ret-state)))

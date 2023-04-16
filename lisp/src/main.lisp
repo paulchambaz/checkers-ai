@@ -1,10 +1,13 @@
 (in-package :checkers-ai)
 
+(defstruct player-turn-res click-state selected state)
+
 (defun player-turn (state actions p-click-state p-selected)
   "Player turn"
+  ; this is officially a cringe status moment!
   (when (= (action-from (nth 0 actions)) -1)
-    (setf (nth 1 state) (switch-player (nth 1 state)))
-    (setf (nth 2 state) -1))
+    (setf (state-player state) (switch-player (state-player state)))
+    (setf (state-eating state) -1))
 
   (if (mouse-pressed)
       ; first we get the value of the square pressed
@@ -17,24 +20,26 @@
                      ; if we are at the first part - piece selection
                      (progn (setf actions-from (select-from selected actions))
                             (if (not (null actions-from))
-                                (values 1 selected state)
-                                (values 0 selected state)))
+                              (make-player-turn-res :click-state 1 :selected selected :state state)
+                              (make-player-turn-res :click-state 0 :selected selected :state state)))
+                                ; (values 1 selected state)
+                                ; (values 0 selected state)))
                      ; if we are at the second part - move selection
                      (progn (setf actions-to (select-to selected actions-from))
                             ; if we are moving to a valid move
                             (if (null actions-to)
                                 ; if the move is invalid we reset the turn
                                 (progn (setf actions-from nil)
-                                       (values 0 selected state))
+                                       (make-player-turn-res :click-state 0 :selected selected :state state))
+                                       ; (values 0 selected state))
                                 ; if the move is valid we change the state
                                 (progn (setf state (result (nth 0 actions-to) state))
-                                       (format t "~a~%" state)
                                        ; and reset variables
                                        (setf actions-from nil)
                                        (setf actions-to nil)
-                                       (values 0 selected state)))))
-                 (values p-click-state p-selected state)))
-      (values p-click-state p-selected state)))
+                                       (make-player-turn-res :click-state 0 :selected selected :state state)))))
+                 (make-player-turn-res :click-state p-click-state :selected p-selected :state state)))
+      (make-player-turn-res :click-state p-click-state :selected p-selected :state state)))
 
 (defun ia-turn (state ai)
   "Ia turn"
@@ -67,7 +72,6 @@
     (return-from end T)
     )
 )
-
 
 (defun main ()
   (setf *random-state* (make-random-state t))
@@ -125,18 +129,20 @@
                      ; turn of the player
                      (progn 
                        ; (setf state (ia-turn state (get-ai 1 *gen*))))
-                       (multiple-value-bind (t-click-state t-selected t-state) (player-turn state actions click-state selected)
-                         (setf click-state t-click-state)
-                         (setf selected t-selected)
-                         (setf state t-state)))
+                       (let ((res (player-turn state actions click-state selected)))
+                         (setf click-state (player-turn-res-click-state res))
+                         (setf selected (player-turn-res-selected res))
+                         (setf state (player-turn-res-state res))))
+; player-turn-res
 
                      ; turn of the ia
                      (progn
-                       ; (setf state (ia-turn state (get-ai 0 *gen*))))
-                       (multiple-value-bind (t-click-state t-selected t-state) (player-turn state actions click-state selected)
-                         (setf click-state t-click-state)
-                         (setf selected t-selected)
-                         (setf state t-state)))
+                       (setf state (ia-turn state (get-ai 0 *gen*))))
+                       ; (let ((res (player-turn state actions click-state selected)))
+                       ;   (format t "black turn is done~%")
+                       ;   (setf click-state (player-turn-res-click-state res))
+                       ;   (setf selected (player-turn-res-selected res))
+                       ;   (setf state (player-turn-res-state res))))
                    )
 
 
