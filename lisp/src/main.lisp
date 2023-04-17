@@ -137,12 +137,11 @@
 
                      ; turn of the ia
                      (progn
-                       (setf state (ia-turn state (get-ai 0 *gen*))))
-                       ; (let ((res (player-turn state actions click-state selected)))
-                       ;   (format t "black turn is done~%")
-                       ;   (setf click-state (player-turn-res-click-state res))
-                       ;   (setf selected (player-turn-res-selected res))
-                       ;   (setf state (player-turn-res-state res))))
+                       ; (setf state (ia-turn state (get-ai 0 *gen*))))
+                       (let ((res (player-turn state actions click-state selected)))
+                         (setf click-state (player-turn-res-click-state res))
+                         (setf selected (player-turn-res-selected res))
+                         (setf state (player-turn-res-state res))))
                    )
 
 

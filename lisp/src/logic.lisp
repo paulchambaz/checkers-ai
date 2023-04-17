@@ -12,11 +12,41 @@
   player ; the player whose turn it is after the action
   eaten) ; the index of the piece that has been eaten (-1 when none)
 
+(defmethod print-object ((obj action) stream)
+  (let ((from (action-from obj))
+        (to (action-to obj))
+        (player (action-player obj))
+        (eaten (action-eaten obj)))
+    (format stream "Action: ")
+    (format stream "from: ~a to: ~a player: ~a eaten: ~a~%"
+            from
+            to
+            (if (equal player +white+)
+              "white"
+              "black")
+            eaten)))
+
 (defstruct state
   "The state holds info about a given position"
   board   ; list of the values at each squares
   player  ; the player that is currently playing 0 for white and 1 for black
   eating) ; the piece that has just eaten and should keep eating (-1 if none)
+
+(defmethod print-object ((obj state) stream)
+  (let ((board (state-board obj))
+        (player (state-player obj))
+        (eating (state-eating obj)))
+    (format stream "State: ")
+    (format stream "board: ~%")
+    (loop for i below 8 do
+          (loop for j below 8 do
+                (format stream " ~a" (nth (+ (* i 8) j) board)))
+          (format stream "~%"))
+    (format stream "player: ~a eating: ~a~%"
+            (if (equal player +white+)
+              "white"
+              "black")
+            eating)))
 
 (defun init-board ()
   "Creates a new board and places the pieces"
@@ -51,7 +81,8 @@
 
 (defun actions (state)
   "Return the list of actions"
-  (format t "actions~%")
+  ; (format t "actions~%")
+  ; (format t "state: ~a~%" state)
   (if (equal (state-eating state) -1)
       (let ((actions (mapcan (lambda (piece) (get-piece-actions (getf piece :n) state)) (if (equal (state-player state) +white+) (get-whites (state-board state)) (get-blacks (state-board state))))))
         (or (select-eating actions) actions))
@@ -60,23 +91,23 @@
 
 (defun result (action state)
   "Creates a new ret-state from an action on a ret-state"
-  (format t "result~%")
+  ; TODO: it looks like state is modified by result - which is not good
+  ; (format t "result~%")
   (format t "action: ~a~%" action)
-  (format t "state: ~a~%" state)
   (let ((ret-state (copy-state state)))
     (if (not (equal (action-to action) -1))
       (progn 
         ; change the action of the player
         (setf (state-player ret-state) (action-player action))
-        (format t "set action~%")
+        ; (format t "set action~%")
 
         ; move to piece to square
         (setf (nth (action-to action) (state-board ret-state)) (nth (action-from action) (state-board ret-state)))
-        (format t "set movement~%")
+        ; (format t "set movement~%")
 
         ; empty previous square
         (setf (nth (action-from action) (state-board ret-state)) 0)
-        (format t "empty previous square~%")
+        ; (format t "empty previous square~%")
 
         ; eating
         (if (not (equal (action-eaten action) -1))
@@ -88,7 +119,7 @@
           ; set the eating of the ret-state
           (setf (state-eating ret-state) -1)
         )
-        (format t "eating action~%")
+        ; (format t "eating action~%")
 
         ; white promotion
         (when (and (is-white-pawn (nth (action-to action) (state-board ret-state)))
@@ -111,6 +142,8 @@
         (setf (state-eating ret-state) -1)
       )
     )
+    (format t "state: ~a~%" state)
+    (format t "ret-state: ~a~%" ret-state)
     ret-state
   )
 )
