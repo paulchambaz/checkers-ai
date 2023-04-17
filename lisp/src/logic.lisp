@@ -48,6 +48,11 @@
               "black")
             eating)))
 
+(defun copy-state (state)
+  (make-state :board (copy-list (state-board state))
+              :player (state-player state)
+              :eating (state-eating state)))
+
 (defun init-board ()
   "Creates a new board and places the pieces"
   ; TODO: half the squares are not used so it would lead to better memory use to
