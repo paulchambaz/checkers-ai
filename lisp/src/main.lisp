@@ -65,7 +65,7 @@
 
         (format t "Welcome to the checkers-ai program, please select a difficulty mode:~%")
 
-        (let ((state (make-state :board (set-board) :player +white+ :eating -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
+        (let ((state (make-state :board (init-board) :player +white+ :eating -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
 
         ; polls events
         (sdl2:with-event-loop (:method :poll)
@@ -87,8 +87,8 @@
                 (let* ((terminal (terminal-test state actions +white+))
                        (utility (terminal-utility-pair-terminal terminal)))
                   (when (terminal-utility-pair-terminal terminal)
-                    (cond ((equal utility most-positive-fixnum) (format t "white wins~%"))
-                          ((equal utility most-negative-fixnum) (format t "black wins~%"))
+                    (cond ((equal utility 1) (format t "white wins~%"))
+                          ((equal utility -1) (format t "black wins~%"))
                           ((equal utility 0) (format t "draw~%")))
                     (sdl2:push-event :quit)))
 

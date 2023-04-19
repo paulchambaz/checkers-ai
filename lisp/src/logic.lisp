@@ -160,31 +160,31 @@
     (progn
       ; white is playing
       (when (equal (list-length (get-blacks (state-board state))) 0)
-        (format t "black looses since it has no pieces~%")
+        ; (format t "black looses since it has no pieces~%")
         ; black looses since it has no pieces
         (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility most-positive-fixnum)
-                                     (make-terminal-utility-pair :terminal T :utility most-negative-fixnum))))
+                                     (make-terminal-utility-pair :terminal T :utility 1)
+                                     (make-terminal-utility-pair :terminal T :utility -1))))
       (when (equal (list-length actions) 0)
-        (format t "white looses since it has no actions~%")
+        ; (format t "white looses since it has no actions~%")
         ; white looses since it has no actions
         (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility most-negative-fixnum)
-                                     (make-terminal-utility-pair :terminal T :utility most-positive-fixnum)))))
+                                     (make-terminal-utility-pair :terminal T :utility -1)
+                                     (make-terminal-utility-pair :terminal T :utility 1)))))
     (progn
       ; black is playing
       (when (equal (list-length (get-whites (state-board state))) 0)
-        (format t "white looses since it has no pieces~%")
+        ; (format t "white looses since it has no pieces~%")
         ; white looses since it has no pieces
         (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility most-negative-fixnum)
-                                     (make-terminal-utility-pair :terminal T :utility most-positive-fixnum))))
+                                     (make-terminal-utility-pair :terminal T :utility -1)
+                                     (make-terminal-utility-pair :terminal T :utility 1))))
       (when (equal (list-length actions) 0)
-        (format t "black looses since it has no actions~%")
+        ; (format t "black looses since it has no actions~%")
         ; black looses since it has no actions
         (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility most-positive-fixnum)
-                                     (make-terminal-utility-pair :terminal T :utility most-negative-fixnum))))))
+                                     (make-terminal-utility-pair :terminal T :utility 1)
+                                     (make-terminal-utility-pair :terminal T :utility -1))))))
   ; TODO: implement draws
   ; if at this point we have not return that means we can either have a draw or nothing at all
   (return-from terminal-test (make-terminal-utility-pair :terminal nil :utility 0))
