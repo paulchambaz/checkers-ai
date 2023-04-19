@@ -26,12 +26,18 @@
               "black")
             eaten)))
 
+; TODO: state needs to hold a couple more information that will be updated when we run result
+; - last-eaten - this is the turn at which a piece has last been eaten - we keep this information because if noone eats in 32 turns then it is a draw
+; - last-moves - this is an queue of size 6 of the last moves - we keep this information because if the last 6 moves are ABABAB meaning we have repeated the same position three times in a row then it is a draw
+; TODO: make sure to modify copy-state - however do not change hash function or comparison - these are not really relevant to the actual position in the search tree and we will consider for this part that they are identical - the ai will still be able to guess that they are bad but it won't be too bad
+; TODO: a draw is a pretty bad state of affairs and we must properly label it - this ai will try to avoid as draws as much as possible to keep things intersting so we will say a draw is half int_max
 (defstruct state
   "The state holds info about a given position"
   board   ; list of the values at each squares
   player  ; the player that is currently playing 0 for white and 1 for black
   eating) ; the piece that has just eaten and should keep eating (-1 if none)
 
+; TODO: make this clearer by only printing 0 when its an actual square
 (defmethod print-object ((obj state) stream)
   (let ((board (state-board obj))
         (player (state-player obj))
@@ -71,23 +77,21 @@
                       (+ (* x 2) (mod y 2))) board) +white-pawn+)))
     board))
 
-; (defun set-board ()
-;   "Creates a new board and places random pieces"
-;   (list 0 0 0 0 0 3 0 0; 0
-;         0 0 0 0 0 0 0 0; 1
-;         0 0 0 0 0 0 0 0; 2
-;         0 0 0 0 0 0 1 0; 3
-;         0 0 0 0 0 0 0 1; 4
-;         0 0 0 0 0 0 1 0; 5 
-;         0 0 0 0 0 0 0 0; 6
-;         4 0 1 0 0 0 0 0; 7
-;   )
-; )
+(defun set-board ()
+  "Creates a new board and places random pieces"
+  (list 0 0 0 0 0 0 0 0; 0
+        0 0 0 0 0 0 0 0; 1
+        0 0 0 0 0 2 0 0; 2
+        2 0 1 0 2 0 0 0; 3
+        0 1 0 0 0 0 0 0; 4
+        0 0 1 0 0 0 0 0; 5 
+        0 0 0 0 0 2 0 0; 6
+        0 0 0 0 0 0 0 0; 7
+  )
+)
 
 (defun actions (state)
   "Return the list of actions"
-  ; (format t "actions~%")
-  ; (format t "state: ~a~%" state)
   (if (equal (state-eating state) -1)
       (let ((actions (mapcan (lambda (piece) (get-piece-actions (getf piece :n) state)) (if (equal (state-player state) +white+) (get-whites (state-board state)) (get-blacks (state-board state))))))
         (or (select-eating actions) actions))
@@ -96,9 +100,6 @@
 
 (defun result (action state)
   "Creates a new ret-state from an action on a ret-state"
-  ; TODO: it looks like state is modified by result - which is not good
-  ; (format t "result~%")
-  (format t "action: ~a~%" action)
   (let ((ret-state (copy-state state)))
     (if (not (equal (action-to action) -1))
       (progn 
@@ -147,10 +148,46 @@
         (setf (state-eating ret-state) -1)
       )
     )
-    (format t "state: ~a~%" state)
-    (format t "ret-state: ~a~%" ret-state)
     ret-state
   )
+)
+
+(defstruct terminal-utility-pair terminal utility)
+
+(defun terminal-test (state actions player)
+  "Returns a pair (terminal utility) about if the state is terminal"
+  (if (equal (state-player state) +white+)
+    (progn
+      ; white is playing
+      (when (equal (list-length (get-blacks (state-board state))) 0)
+        (format t "black looses since it has no pieces~%")
+        ; black looses since it has no pieces
+        (return-from terminal-test (if (equal player +white+)
+                                     (make-terminal-utility-pair :terminal T :utility most-positive-fixnum)
+                                     (make-terminal-utility-pair :terminal T :utility most-negative-fixnum))))
+      (when (equal (list-length actions) 0)
+        (format t "white looses since it has no actions~%")
+        ; white looses since it has no actions
+        (return-from terminal-test (if (equal player +white+)
+                                     (make-terminal-utility-pair :terminal T :utility most-negative-fixnum)
+                                     (make-terminal-utility-pair :terminal T :utility most-positive-fixnum)))))
+    (progn
+      ; black is playing
+      (when (equal (list-length (get-whites (state-board state))) 0)
+        (format t "white looses since it has no pieces~%")
+        ; white looses since it has no pieces
+        (return-from terminal-test (if (equal player +white+)
+                                     (make-terminal-utility-pair :terminal T :utility most-negative-fixnum)
+                                     (make-terminal-utility-pair :terminal T :utility most-positive-fixnum))))
+      (when (equal (list-length actions) 0)
+        (format t "black looses since it has no actions~%")
+        ; black looses since it has no actions
+        (return-from terminal-test (if (equal player +white+)
+                                     (make-terminal-utility-pair :terminal T :utility most-positive-fixnum)
+                                     (make-terminal-utility-pair :terminal T :utility most-negative-fixnum))))))
+  ; TODO: implement draws
+  ; if at this point we have not return that means we can either have a draw or nothing at all
+  (return-from terminal-test (make-terminal-utility-pair :terminal nil :utility 0))
 )
 
 (defun black-terminal-test (state)
