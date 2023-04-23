@@ -47,7 +47,7 @@
 
 ; search constants
 (defconstant +search-depth+ 32)
-(defconstant +search-time+ 1)
+(defconstant +search-time+ 10)
 ; (defconstant +search-time+ 100)
 
 ; traning constant
