@@ -43,7 +43,7 @@
 
 (defun ia-turn (state ai)
   "Ia turn"
-  (let ((move (ai-search state +search-depth+ ai)))
+  (let ((move (ai-search state +search-depth+ (ai-dna ai))))
     ; (format t "ia turn is done - move : ~a~%" move)
     (result move state)))
 
@@ -51,8 +51,7 @@
   (setf *random-state* (make-random-state t))
   (compute-diagonals)
   (dotimes (i 2)
-    (setf *gen* (init-gen 2)))
-  ; (match (get-ai 0 *gen*) (get-ai 1 *gen*)))
+    (setf *gen* (init-gen)))
   ; intializes sdl2
   (sdl2:with-init (:everything)
     (finish-output)
@@ -65,7 +64,7 @@
 
         (format t "Welcome to the checkers-ai program, please select a difficulty mode:~%")
 
-        (let ((state (make-state :board (init-board) :player +white+ :eating -1)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
+        (let ((state (init-state)) (click-state 0) (selected -1) (actions-from nil) (actions-to nil))
 
         ; polls events
         (sdl2:with-event-loop (:method :poll)
@@ -85,62 +84,61 @@
               (let ((actions (actions state)))
 
                 (let* ((terminal (terminal-test state actions +white+))
-                       (utility (terminal-utility-pair-terminal terminal)))
-                  (when (terminal-utility-pair-terminal terminal)
-                    (cond ((equal utility 1) (format t "white wins~%"))
-                          ((equal utility -1) (format t "black wins~%"))
-                          ((equal utility 0) (format t "draw~%")))
-                    (sdl2:push-event :quit)))
+                       (utility (terminal-utility-pair-utility terminal)))
+                  (if (terminal-utility-pair-terminal terminal)
+                    (progn (cond ((equal utility 1) (format t "white wins~%"))
+                                 ((equal utility -1) (format t "black wins~%"))
+                                 ((equal utility 0) (format t "draw~%")))
+                           (sdl2:push-event :quit))
+                    (progn (clear renderer)
+                           (draw-checker renderer)
 
-                (clear renderer)
-                (draw-checker renderer)
+                           (when (= click-state 0)
+                             (hint-actions-from actions renderer))
 
-                (when (= click-state 0)
-                  (hint-actions-from actions renderer))
+                           (when (= click-state 1)
+                             (hint-actions-to (select-from selected actions) renderer))
 
-                (when (= click-state 1)
-                  (hint-actions-to (select-from selected actions) renderer))
+                           (draw-pieces (state-board state) renderer)
+                           (sdl2:render-present renderer)
 
-                (draw-pieces (state-board state) renderer)
-                (sdl2:render-present renderer)
+                           (if (= (state-player state) 0)
 
-                (if (= (state-player state) 0)
+                             ; turn of the player
+                             (progn 
+                               (setf state (ia-turn state (get-ai 1 *gen*))))
+                             ; (let ((res (player-turn state actions click-state selected)))
+                             ;   (setf click-state (player-turn-res-click-state res))
+                             ;   (setf selected (player-turn-res-selected res))
+                             ;   (setf state (player-turn-res-state res))))
 
-                  ; turn of the player
-                  (progn 
-                    ; (setf state (ia-turn state (get-ai 1 *gen*))))
-                    (let ((res (player-turn state actions click-state selected)))
-                      (setf click-state (player-turn-res-click-state res))
-                      (setf selected (player-turn-res-selected res))
-                      (setf state (player-turn-res-state res))))
+                             ; turn of the ia
+                             (progn
+                               ; (setf state (ia-turn state (get-ai 0 *gen*))))
+                             (let ((res (player-turn state actions click-state selected)))
+                               (setf click-state (player-turn-res-click-state res))
+                               (setf selected (player-turn-res-selected res))
+                               (setf state (player-turn-res-state res))))
+                             )
 
-                  ; turn of the ia
-                  (progn
-                    (setf state (ia-turn state (get-ai 0 *gen*))))
-                     ; (let ((res (player-turn state actions click-state selected)))
-                     ;   (setf click-state (player-turn-res-click-state res))
-                     ;   (setf selected (player-turn-res-selected res))
-                     ;   (setf state (player-turn-res-state res))))
-                 )
+                           (setf actions (actions state))
 
-                (setf actions (actions state))
+                           ; time to draw
 
-                ; time to draw
+                           (clear renderer)
+                           (draw-checker renderer)
 
-                (clear renderer)
-                (draw-checker renderer)
+                           (when (= click-state 0)
+                             (hint-actions-from actions renderer))
 
-                (when (= click-state 0)
-                  (hint-actions-from actions renderer))
+                           (when (= click-state 1)
+                             (hint-actions-to (select-from selected actions) renderer))
 
-                (when (= click-state 1)
-                  (hint-actions-to (select-from selected actions) renderer))
+                           (draw-pieces (state-board state) renderer)
+                           (sdl2:render-present renderer)
 
-               (draw-pieces (state-board state) renderer)
-               (sdl2:render-present renderer)
+                           (setf *prev-mouse* *mouse*)
 
-               (setf *prev-mouse* *mouse*)
-
-               (sdl2:delay 16))))
-          (:quit () t)))))))
+                           (sdl2:delay 16)))))))
+                (:quit () t)))))))
 

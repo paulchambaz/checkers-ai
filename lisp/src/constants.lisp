@@ -47,8 +47,10 @@
 
 ; search constants
 (defconstant +search-depth+ 32)
-(defconstant +search-time+ 10)
-; (defconstant +search-time+ 100)
+(defconstant +search-time+ .1)
+; (defconstant +search-time+ 10)
+
+(defconstant +win-utility+ 1000000)
 
 ; traning constant
 (defconstant gen-size 100)
@@ -56,3 +58,12 @@
 (defconstant dna-size 20)
 (defconstant initial-variation 1.0)
 (defconstant generation-variation 0.1)
+
+; added split-string method for reading csv
+(defun split-string (string delimiter)
+  (loop with start = 0
+        for pos = (search delimiter string :start2 start)
+        collect (subseq string start pos) into parts
+        while pos
+        do (setf start (+ pos (length delimiter)))
+        finally (return (append parts (list (subseq string start))))))

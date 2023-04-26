@@ -12,52 +12,20 @@
   player ; the player whose turn it is after the action
   eaten) ; the index of the piece that has been eaten (-1 when none)
 
-(defmethod print-object ((obj action) stream)
-  (let ((from (action-from obj))
-        (to (action-to obj))
-        (player (action-player obj))
-        (eaten (action-eaten obj)))
-    (format stream "Action: ")
-    (format stream "from: ~a to: ~a player: ~a eaten: ~a~%"
-            from
-            to
-            (if (equal player +white+)
-              "white"
-              "black")
-            eaten)))
-
-; TODO: state needs to hold a couple more information that will be updated when we run result
-; - last-eaten - this is the turn at which a piece has last been eaten - we keep this information because if noone eats in 32 turns then it is a draw
-; - last-moves - this is an queue of size 6 of the last moves - we keep this information because if the last 6 moves are ABABAB meaning we have repeated the same position three times in a row then it is a draw
-; TODO: make sure to modify copy-state - however do not change hash function or comparison - these are not really relevant to the actual position in the search tree and we will consider for this part that they are identical - the ai will still be able to guess that they are bad but it won't be too bad
-; TODO: a draw is a pretty bad state of affairs and we must properly label it - this ai will try to avoid as draws as much as possible to keep things intersting so we will say a draw is half int_max
 (defstruct state
   "The state holds info about a given position"
-  board   ; list of the values at each squares
-  player  ; the player that is currently playing 0 for white and 1 for black
-  eating) ; the piece that has just eaten and should keep eating (-1 if none)
-
-; TODO: make this clearer by only printing 0 when its an actual square
-(defmethod print-object ((obj state) stream)
-  (let ((board (state-board obj))
-        (player (state-player obj))
-        (eating (state-eating obj)))
-    (format stream "State: ")
-    (format stream "board: ~%")
-    (loop for i below 8 do
-          (loop for j below 8 do
-                (format stream " ~a" (nth (+ (* i 8) j) board)))
-          (format stream "~%"))
-    (format stream "player: ~a eating: ~a~%"
-            (if (equal player +white+)
-              "white"
-              "black")
-            eating)))
+  board    ; list of the values at each squares
+  player   ; the player that is currently playing 0 for white and 1 for black
+  eating   ; the piece that has just eaten and should keep eating (-1 if none)
+  previous ; list of the six previous actions the state has done
+  countdown) ; counter to draw resets when a piece eats
 
 (defun copy-state (state)
   (make-state :board (copy-list (state-board state))
               :player (state-player state)
-              :eating (state-eating state)))
+              :eating (state-eating state)
+              :previous (if (state-previous state) (copy-list (state-previous state)) (state-previous state))
+              :countdown (state-countdown state)))
 
 (defun init-board ()
   "Creates a new board and places the pieces"
@@ -77,16 +45,23 @@
                       (+ (* x 2) (mod y 2))) board) +white-pawn+)))
     board))
 
+(defun init-state ()
+  (make-state :board (init-board)
+              :player +white+
+              :eating -1
+              :previous nil
+              :countdown 32))
+
 (defun set-board ()
   "Creates a new board and places random pieces"
-  (list 0 0 0 0 0 0 0 0; 0
-        0 0 0 0 0 0 0 0; 1
-        0 0 0 0 0 2 0 0; 2
-        2 0 1 0 2 0 0 0; 3
-        0 1 0 0 0 0 0 0; 4
-        0 0 1 0 0 0 0 0; 5 
-        0 0 0 0 0 2 0 0; 6
-        0 0 0 0 0 0 0 0; 7
+  (list 0 0 0 0 0 0 0 0 ; 0
+        0 0 0 0 0 0 0 0 ; 1
+        0 0 0 0 0 2 0 0 ; 2
+        2 0 1 0 2 0 0 0 ; 3
+        0 1 0 0 0 0 0 0 ; 4
+        0 0 1 0 0 0 0 0 ; 5 
+        0 0 0 0 0 2 0 0 ; 6
+        0 0 0 0 0 0 0 0 ; 7
   )
 )
 
@@ -103,6 +78,9 @@
   (let ((ret-state (copy-state state)))
     (if (not (equal (action-to action) -1))
       (progn 
+        ; push action to the list of actions
+        (push-previous action ret-state)
+
         ; change the action of the player
         (setf (state-player ret-state) (action-player action))
         ; (format t "set action~%")
@@ -116,14 +94,18 @@
         ; (format t "empty previous square~%")
 
         ; eating
-        (if (not (equal (action-eaten action) -1))
+        (if (equal (action-eaten action) -1)
+          ; set the eating of the ret-state
+          (progn
+            (setf (state-eating ret-state) -1)
+            (setf (state-countdown ret-state) (- (state-countdown ret-state) 1))
+          )
           (progn
             (setf (nth (action-eaten action) (state-board ret-state)) 0)
             ; set the eating of the ret-state
             (setf (state-eating ret-state) (action-to action))
+            (setf (state-countdown ret-state) 32)
           )
-          ; set the eating of the ret-state
-          (setf (state-eating ret-state) -1)
         )
         ; (format t "eating action~%")
 
@@ -156,6 +138,7 @@
 
 (defun terminal-test (state actions player)
   "Returns a pair (terminal utility) about if the state is terminal"
+  ; TODO: rewrite this so player looses if it has no longer any pieces regardless of if it is its turn or not
   (if (equal (state-player state) +white+)
     (progn
       ; white is playing
@@ -185,10 +168,25 @@
         (return-from terminal-test (if (equal player +white+)
                                      (make-terminal-utility-pair :terminal T :utility 1)
                                      (make-terminal-utility-pair :terminal T :utility -1))))))
-  ; TODO: implement draws
-  ; if at this point we have not return that means we can either have a draw or nothing at all
-  (return-from terminal-test (make-terminal-utility-pair :terminal nil :utility 0))
-)
+
+  ; check that we have not been doing the same moves three times in a row
+  (when (and (equal (length (state-previous state)) 6)
+             (equal (nth 0 (state-previous state))
+                    (nth 2 (state-previous state)))
+             (equal (nth 0 (state-previous state))
+                    (nth 4 (state-previous state)))
+             (equal (nth 1 (state-previous state))
+                    (nth 3 (state-previous state)))
+             (equal (nth 1 (state-previous state))
+                    (nth 5 (state-previous state))))
+    (return-from terminal-test (make-terminal-utility-pair :terminal T :utility 0)))
+
+    ; check that a piece has been eaten in the last 32 turns
+    (when (equal (state-countdown state) 0)
+      (return-from terminal-test (make-terminal-utility-pair :terminal T :utility 0)))
+
+
+  (return-from terminal-test (make-terminal-utility-pair :terminal nil :utility 0)))
 
 (defun black-terminal-test (state)
   (equal (list-length (get-blacks (state-board state))) 0))
@@ -196,6 +194,11 @@
 (defun white-terminal-test (state)
   (equal (list-length (get-whites (state-board state))) 0))
 
+
+(defun push-previous (action state)
+  (push action (state-previous state))
+  (when (> (length (state-previous state)) 6) 
+    (setf (state-previous state) (subseq (state-previous state) 0 6))))
 
 (defun white-pawn-actions (n state)
   "Returns the list of white pawn actions"
@@ -498,3 +501,97 @@
     ; check that the square is valid
     (if (and (< out +nb-squares+) (= (get-line out) (+ (get-line n) 1)))
         out)))
+
+(defun board-index (index)
+  (let ((row (floor index 4))
+        (column (mod index 4)))
+    (+ (* row 8) (* 2 column) (- 1 (mod row 2)))))
+
+(defmethod print-object ((obj action) stream)
+  (let ((from (action-from obj))
+        (to (action-to obj))
+        (player (action-player obj))
+        (eaten (action-eaten obj)))
+    (format stream "Action: ")
+    (format stream "from: ~a to: ~a player: ~a eaten: ~a~%"
+            from
+            to
+            (if (equal player +white+)
+              "white"
+              "black")
+            eaten)))
+
+(defmethod print-object ((obj state) stream)
+  (let ((board (state-board obj))
+        (player (state-player obj))
+        (eating (state-eating obj))
+        (previous (state-previous obj))
+        (countdown (state-countdown obj)))
+    (format stream "State: ")
+    (format stream "board: ~%")
+    (loop for i below 8 do
+          (loop for j below 8 do
+                (format stream " ~a" (nth (+ (* i 8) j) board)))
+          (format stream "~%"))
+    (format stream "player: ~a eating: ~a countdown: ~a~%actions: ~a~%"
+            (if (equal player +white+)
+              "white"
+              "black")
+            eating
+            countdown
+            previous)))
+
+(defun action-hash (action)
+  (+ (* 1627 (action-from action))
+     (* 4969 (action-to action))
+     (* 1171 (action-player action))
+     (* 6029 (action-eaten action))))
+
+(defun action-test (a1 a2)
+  (and (equal (action-from a1) (action-from a2))
+       (equal (action-to a1) (action-to a2))
+       (equal (action-player a1) (action-player a2))
+       (equal (action-eaten a1) (action-eaten a2))))
+
+(defun state-hash (state)
+  (+ (* 9421 (state-eating state))
+     (* 8609 (state-player state))
+     (* 2707 (nth 1 (state-board state)))
+     (* 5839 (nth 3 (state-board state)))
+     (* 2543 (nth 5 (state-board state)))
+     (* 6163 (nth 7 (state-board state)))
+     (* 8663 (nth 8 (state-board state)))
+     (* 6833 (nth 10 (state-board state)))
+     (* 4229 (nth 12 (state-board state)))
+     (* 8761 (nth 14 (state-board state)))
+     (* 4793 (nth 17 (state-board state)))
+     (* 4337 (nth 19 (state-board state)))
+     (* 9319 (nth 21 (state-board state)))
+     (* 7489 (nth 23 (state-board state)))
+     (* 3121 (nth 24 (state-board state)))
+     (* 3433 (nth 26 (state-board state)))
+     (* 5981 (nth 28 (state-board state)))
+     (* 3251 (nth 30 (state-board state)))
+     (* 6529 (nth 33 (state-board state)))
+     (* 7927 (nth 35 (state-board state)))
+     (* 8221 (nth 37 (state-board state)))
+     (* 1433 (nth 39 (state-board state)))
+     (* 3769 (nth 40 (state-board state)))
+     (* 4561 (nth 42 (state-board state)))
+     (* 5227 (nth 44 (state-board state)))
+     (* 3623 (nth 46 (state-board state)))
+     (* 6121 (nth 49 (state-board state)))
+     (* 3061 (nth 51 (state-board state)))
+     (* 6907 (nth 53 (state-board state)))
+     (* 3923 (nth 55 (state-board state)))
+     (* 7481 (nth 56 (state-board state)))
+     (* 9181 (nth 58 (state-board state)))
+     (* 8543 (nth 60 (state-board state)))
+     (* 6113 (nth 62 (state-board state)))))
+
+(defun state-test (s1 s2)
+  (and (equal (state-board s1) (state-board s2))
+       (equal (state-player s1) (state-player s2))
+       (equal (state-eating s1) (state-eating s2))
+       (equal (state-previous s1) (state-previous s2))
+       (equal (state-countdown s1) (state-countdown s2))))
