@@ -7,7 +7,7 @@
 
 (defun ai-search (state depth ai)
   (let* ((actions (actions state))
-         (openings (load-opening "data/opening.csv"))
+         (openings (load-opening "data/opening-database.csv"))
          (state-hash (state-hash state))
         (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
     (let ((opening-action (gethash state-hash openings)))
@@ -343,7 +343,7 @@
         (ai (nth 0 (init-gen)))
         (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash))
         (threads nil)
-        (sub-states (divide-states states 12)))
+        (sub-states (divide-states states 5)))
     (dolist (depth '(8 16 32))
       (dolist (sub-state sub-states)
         (push (sb-thread:make-thread #'process-state :arguments (list sub-state depth ai endgame-database)) threads))
@@ -369,19 +369,12 @@
             (when (equal depth 32) (sb-thread:with-mutex (*endgame-db-mutex*)
                                                          (setf (gethash state endgame-database) result))))))
       (format t "done processing state~%"))))
+
 (defun divide-states (states n)
   (let* ((len (length states))
-         (sublen (floor len n))
-         (extra (mod len n))
-         (result ()))
-    (loop repeat n
-          with start = 0
-          with end = sublen
-          do (progn
-               (when extra
-                 (incf end)
-                 (decf extra))
-               (push (subseq states start end) result)
-               (setf start end
-                     end (+ end sublen)))
-          finally (return (reverse result)))))
+         (size (ceiling len n))
+         (out '()))
+    (dotimes (i (- n 1))
+      (push (subseq states (* i size) (* (+ i 1) size)) out))
+    (push (subseq states (* (- n 1) size) len) out)
+    out))

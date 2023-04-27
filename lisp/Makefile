@@ -28,5 +28,5 @@ compute-database:
 	@sbcl --dynamic-space-size 12288 \
 		--load checkers-ai.asd \
 		--eval '(ql:quickload :checkers-ai)' \
-		--eval '(checkers-ai::endgame-compute 2 "data/endgame-database.csv")' \
+		--eval '(checkers-ai::endgame-compute $(piece) "data/endgame-database.csv")' \
 		--eval '(exit)'
