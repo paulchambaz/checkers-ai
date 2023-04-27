@@ -1,5 +1,8 @@
 (in-package :checkers-ai)
 
+; TODO: we need to rewrite the entire genetic algorithm
+; TODO: we also need to write code for producing the average bot and make it play against the famility
+
 (defun make-ai (dna elo)
   (list dna elo))
 

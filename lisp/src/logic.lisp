@@ -34,9 +34,6 @@
 
 (defun init-board ()
   "Creates a new board and places the pieces"
-  ; TODO: half the squares are not used so it would lead to better memory use to
-  ; not store them
-  ; intializes the board as a list of grid-square^2 elements
   (let ((board (make-list +nb-squares+ :initial-element 0)))
     (dotimes (x (/ +grid-size+ 2))
       (dotimes (y (- (/ +grid-size+ 2) 1))
@@ -88,73 +85,59 @@
 
         ; change the action of the player
         (setf (state-player ret-state) (action-player action))
-        ; (format t "set action~%")
 
         ; move to piece to square
         (setf (nth (action-to action) (state-board ret-state)) (nth (action-from action) (state-board ret-state)))
-        ; (format t "set movement~%")
 
         ; empty previous square
         (setf (nth (action-from action) (state-board ret-state)) 0)
-        ; (format t "empty previous square~%")
 
         ; eating
         (if (equal (action-eaten action) -1)
           ; set the eating of the ret-state
           (progn
             (setf (state-eating ret-state) -1)
-            (setf (state-countdown ret-state) (- (state-countdown ret-state) 1))
-          )
+            (setf (state-countdown ret-state) (- (state-countdown ret-state) 1)))
           (progn
             (setf (nth (action-eaten action) (state-board ret-state)) 0)
             ; set the eating of the ret-state
             (setf (state-eating ret-state) (action-to action))
-            (setf (state-countdown ret-state) 32)
-          )
-        )
-        ; (format t "eating action~%")
+            (setf (state-countdown ret-state) 32)))
 
         ; white promotion
         (when (and (is-white-pawn (nth (action-to action) (state-board ret-state)))
                    (< (action-to action) +grid-size+))
           (setf (nth (action-to action) (state-board ret-state)) 3)
           (setf (state-player ret-state) +black+)
-          (setf (state-eating ret-state) -1)
-        )
+          (setf (state-eating ret-state) -1))
 
         ; black promotion
         (when (and (is-black-pawn (nth (action-to action) (state-board ret-state)))
                    (>= (action-to action) (- +nb-squares+ +grid-size+)))
           (setf (nth (action-to action) (state-board ret-state)) 4)
           (setf (state-player ret-state) +white+)
-          (setf (state-eating ret-state) -1)
-        )
-      )
-      (progn
-        (setf (state-player ret-state) (action-player action))
-        (setf (state-eating ret-state) -1)
-      )
-    )
-    ret-state
-  )
-)
+          (setf (state-eating ret-state) -1)))
+      (progn (setf (state-player ret-state) (action-player action))
+             (setf (state-eating ret-state) -1)))
+    ret-state))
 
 (defstruct terminal-utility-pair terminal utility)
 
 (defun terminal-test (state actions player)
   "Returns a pair (terminal utility) about if the state is terminal"
-  ; TODO: rewrite this so player looses if it has no longer any pieces regardless of if it is its turn or not
   (if (equal (state-player state) +white+)
     (progn
       ; white is playing
       (when (equal (list-length (get-blacks (state-board state))) 0)
-        ; (format t "black looses since it has no pieces~%")
         ; black looses since it has no pieces
         (return-from terminal-test (if (equal player +white+)
                                      (make-terminal-utility-pair :terminal T :utility 1)
                                      (make-terminal-utility-pair :terminal T :utility -1))))
+      (when (equal (list-length (get-whites (state-board state))) 0)
+        (return-from terminal-test (if (equal player +white+)
+                                     (make-terminal-utility-pair :terminal T :utility -1)
+                                     (make-terminal-utility-pair :terminal T :utility 1))))
       (when (equal (list-length actions) 0)
-        ; (format t "white looses since it has no actions~%")
         ; white looses since it has no actions
         (return-from terminal-test (if (equal player +white+)
                                      (make-terminal-utility-pair :terminal T :utility -1)
@@ -162,13 +145,15 @@
     (progn
       ; black is playing
       (when (equal (list-length (get-whites (state-board state))) 0)
-        ; (format t "white looses since it has no pieces~%")
         ; white looses since it has no pieces
         (return-from terminal-test (if (equal player +white+)
                                      (make-terminal-utility-pair :terminal T :utility -1)
                                      (make-terminal-utility-pair :terminal T :utility 1))))
+      (when (equal (list-length (get-blacks (state-board state))) 0)
+        (return-from terminal-test (if (equal player +white+)
+                                     (make-terminal-utility-pair :terminal T :utility 1)
+                                     (make-terminal-utility-pair :terminal T :utility -1))))
       (when (equal (list-length actions) 0)
-        ; (format t "black looses since it has no actions~%")
         ; black looses since it has no actions
         (return-from terminal-test (if (equal player +white+)
                                      (make-terminal-utility-pair :terminal T :utility 1)

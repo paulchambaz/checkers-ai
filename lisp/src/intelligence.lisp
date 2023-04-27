@@ -1,19 +1,21 @@
 (in-package :checkers-ai)
 
 (defstruct utility-move-pair utility move)
+(defstruct outcome-move-pair outcome move)
 
 (defun ai-search (state depth ai)
   (let* ((actions (actions state))
          (openings (load-opening "data/opening.csv"))
-         (state-hash (state-hash state)))
+         (state-hash (state-hash state))
+        (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
     (let ((opening-action (gethash state-hash openings)))
       (if opening-action
         opening-action
         (if (equal (list-length actions) 1)
           (nth 0 actions)
-          (iterative-alpha-beta-search state depth ai))))))
+          (iterative-alpha-beta-search state depth ai endgame-database))))))
 
-(defun iterative-alpha-beta-search (state depth ai)
+(defun iterative-alpha-beta-search (state depth ai endgame-database)
   (if (equal (to-move state) +white+)
     (format t "white ")
     (format t "black "))
@@ -22,73 +24,75 @@
          (max-time (+ (get-internal-run-time) (* +search-time+ 1000000)))
          (max-depth 0)
          (history (make-hash-table :test #'action-test :hash-function #'action-hash))
-         (killer-moves (make-array (+ depth 1) :initial-element (make-array 2 :initial-element (make-array 2 :initial-element nil))))
-         )
+         (killer-moves (make-array (+ depth 1) :initial-element (make-array 2 :initial-element (make-array 2 :initial-element nil)))))
     (block outer-loop
            (dotimes (n depth)
-             (let ((res (max-value state most-negative-fixnum most-positive-fixnum player (+ n 1) max-time ai history killer-moves)))
+             (let ((res (max-value state most-negative-fixnum most-positive-fixnum player (+ n 1) max-time ai history killer-moves endgame-database)))
                ; we have a guaranted win or lose in n moves so we can just return
                (when (< (get-internal-run-time) max-time)
                  (setf result res)
                  (setf max-depth (+ n 1))
-                 ; (format t "depth: ~a utility: ~a~%" (+ n 1) (utility-move-pair-utility res))
                  (when (or (equal (utility-move-pair-utility res) (* 1 +win-utility+))
                            (equal (utility-move-pair-utility res) (* -1 +win-utility+)))
                    (return-from outer-loop))))))
     (format t "move: ~a value: ~a depth: ~a~%" (utility-move-pair-move result) (utility-move-pair-utility result) max-depth)
     (utility-move-pair-move result)))
 
-(defun max-value (state alpha beta player depth max-time ai history killer-moves)
-  (let ((actions (actions state)))
-    (if (or (> (get-internal-run-time) max-time) (equal depth 0))
-      (return-from max-value (progn
-                               (make-utility-move-pair :utility (utility state actions player ai) :move nil)))
-      (let ((terminal (terminal-test state actions player)))
-        (if (terminal-utility-pair-terminal terminal)
-          (return-from max-value (progn
-                                   (make-utility-move-pair :utility (* (terminal-utility-pair-utility terminal) 1000000) :move nil)))
-          (let ((best (make-utility-move-pair :utility most-negative-fixnum :move nil))
-                (sorted-actions (order-moves actions player depth history killer-moves)))
-            (dolist (move sorted-actions)
-              (let* ((next-state (result move state))
-                     (current (if (equal (to-move next-state) player)
-                                (max-value next-state alpha beta player (- depth 1) max-time ai history killer-moves)
-                                (min-value next-state alpha beta player (- depth 1) max-time ai history killer-moves))))
-                (when (> (utility-move-pair-utility current) (utility-move-pair-utility best))
-                  (setf (utility-move-pair-utility best) (utility-move-pair-utility current))
-                  (setf (utility-move-pair-move best) move)
-                  (setf alpha (max alpha (utility-move-pair-utility best))))
-                (when (>= (utility-move-pair-utility best) beta)
-                  (update-history move history)
-                  (update-killer-moves move (to-move next-state) depth killer-moves history)
-                  (return-from max-value best))))
-            best))))))
+(defun max-value (state alpha beta player depth max-time ai history killer-moves endgame-database)
+  (let ((actions (actions state))
+        (endgame (gethash state endgame-database)))
+    (if (and endgame (not (equal (outcome-move-pair-outcome endgame) 0)))
+      (return-from max-value (make-utility-move-pair :utility (* (outcome-move-pair-outcome endgame) +win-utility+)
+                                                     :move (outcome-move-pair-move endgame)))
+      (if (or (> (get-internal-run-time) max-time) (equal depth 0))
+        (return-from max-value (make-utility-move-pair :utility (utility state actions player ai) :move nil))
+        (let ((terminal (terminal-test state actions player)))
+          (if (terminal-utility-pair-terminal terminal)
+            (return-from max-value (make-utility-move-pair :utility (* (terminal-utility-pair-utility terminal) +win-utility+) :move nil))
+            (let ((best (make-utility-move-pair :utility most-negative-fixnum :move nil))
+                  (sorted-actions (order-moves actions player depth history killer-moves)))
+              (dolist (move sorted-actions)
+                (let* ((next-state (result move state))
+                       (current (if (equal (to-move next-state) player)
+                                  (max-value next-state alpha beta player (- depth 1) max-time ai history killer-moves endgame-database)
+                                  (min-value next-state alpha beta player (- depth 1) max-time ai history killer-moves endgame-database))))
+                  (when (> (utility-move-pair-utility current) (utility-move-pair-utility best))
+                    (setf (utility-move-pair-utility best) (utility-move-pair-utility current))
+                    (setf (utility-move-pair-move best) move)
+                    (setf alpha (max alpha (utility-move-pair-utility best))))
+                  (when (>= (utility-move-pair-utility best) beta)
+                    (update-history move history)
+                    (update-killer-moves move (to-move next-state) depth killer-moves history)
+                    (return-from max-value best))))
+              best)))))))
 
-(defun min-value (state alpha beta player depth max-time ai history killer-moves)
-  (let ((actions (actions state)))
-    (if (or (> (get-internal-run-time) max-time) (equal depth 0))
-      (return-from min-value (progn
-                               (make-utility-move-pair :utility (utility state actions player ai) :move nil)))
-      (let* ((terminal (terminal-test state actions player)))
-        (if (terminal-utility-pair-terminal terminal)
-          (return-from min-value (progn
-                                   (make-utility-move-pair :utility (* (terminal-utility-pair-utility terminal) 1000000) :move nil)))
-          (let ((best (make-utility-move-pair :utility most-positive-fixnum :move nil))
-                (sorted-actions (order-moves actions player depth history killer-moves)))
-            (dolist (move sorted-actions)
-              (let* ((next-state (result move state))
-                     (current (if (equal (to-move next-state) player)
-                                (max-value next-state alpha beta player (- depth 1) max-time ai history killer-moves)
-                                (min-value next-state alpha beta player (- depth 1) max-time ai history killer-moves))))
-                (when (< (utility-move-pair-utility current) (utility-move-pair-utility best))
-                  (setf (utility-move-pair-utility best) (utility-move-pair-utility current))
-                  (setf (utility-move-pair-move best) move)
-                  (setf beta (min beta (utility-move-pair-utility best))))
-                (when (<= (utility-move-pair-utility best) alpha)
-                  (update-history move history)
-                  (update-killer-moves move (to-move next-state) depth killer-moves history)
-                  (return-from min-value best))))
-            best))))))
+(defun min-value (state alpha beta player depth max-time ai history killer-moves endgame-database)
+  (let ((actions (actions state))
+        (endgame (gethash state endgame-database)))
+    (if (and endgame (not (equal (outcome-move-pair-outcome endgame) 0)))
+      (return-from min-value (make-utility-move-pair :utility (* (outcome-move-pair-outcome endgame) +win-utility+)
+                                                     :move (outcome-move-pair-move endgame)))
+      (if (or (> (get-internal-run-time) max-time) (equal depth 0))
+        (return-from min-value (make-utility-move-pair :utility (utility state actions player ai) :move nil))
+        (let* ((terminal (terminal-test state actions player)))
+          (if (terminal-utility-pair-terminal terminal)
+            (return-from min-value (make-utility-move-pair :utility (* (terminal-utility-pair-utility terminal) +win-utility+) :move nil))
+            (let ((best (make-utility-move-pair :utility most-positive-fixnum :move nil))
+                  (sorted-actions (order-moves actions player depth history killer-moves)))
+              (dolist (move sorted-actions)
+                (let* ((next-state (result move state))
+                       (current (if (equal (to-move next-state) player)
+                                  (max-value next-state alpha beta player (- depth 1) max-time ai history killer-moves endgame-database)
+                                  (min-value next-state alpha beta player (- depth 1) max-time ai history killer-moves endgame-database))))
+                  (when (< (utility-move-pair-utility current) (utility-move-pair-utility best))
+                    (setf (utility-move-pair-utility best) (utility-move-pair-utility current))
+                    (setf (utility-move-pair-move best) move)
+                    (setf beta (min beta (utility-move-pair-utility best))))
+                  (when (<= (utility-move-pair-utility best) alpha)
+                    (update-history move history)
+                    (update-killer-moves move (to-move next-state) depth killer-moves history)
+                    (return-from min-value best))))
+              best)))))))
 
 (defun order-moves (actions player depth history killer-moves)
   ; sort the actions based on their history
@@ -161,6 +165,8 @@
 ;   "Count the number of safe kings the player has"
 ;   (
 
+; TODO: we need to write the list of all ways to evaluate the board
+
 (defun compute-opening (p-actions)
   (compute-diagonals)
   (let* ((state (init-state))
@@ -207,6 +213,48 @@
                  (setf (gethash state-hash action-map) new-action))))
     action-map))
 
+(defun save-endgame (state outcome filename)
+  (with-open-file (stream filename
+                          :direction :output
+                          :if-exists :append
+                          :if-does-not-exist :create)
+    (let ((state-hash (state-hash state))
+          (t-outcome (outcome-move-pair-outcome outcome))
+          (action (outcome-move-pair-move outcome)))
+      (if action
+        (format stream "~a,~a,~a,~a,~a,~a~%"
+                state-hash
+                t-outcome
+                (action-from action)
+                (action-to action)
+                (action-player action)
+                (action-eaten action))
+        (format stream "~a,~a~%"
+                state-hash
+                t-outcome)))))
+
+(defun load-endgame (filename)
+  (let ((endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
+    (with-open-file (stream filename
+                            :direction :input
+                            :if-does-not-exist :error)
+      (loop for line = (read-line stream nil)
+            while line
+            do (let* ((tokens (split-string line ","))
+                      (state-hash (parse-integer (nth 0 tokens)))
+                      (outcome (parse-integer (nth 1 tokens)))
+                      (from (parse-integer (nth 2 tokens)))
+                      (to (parse-integer (nth 3 tokens)))
+                      (player (parse-integer (nth 4 tokens)))
+                      (eaten (parse-integer (nth 5 tokens)))
+                      (new-move (make-action :from from
+                                               :to to
+                                               :player player
+                                               :eaten eaten))
+                      (new-outcome (make-outcome-move-pair :outcome outcome
+                                                           :move new-move)))
+                 (setf (gethash state-hash endgame-database) new-outcome))))
+    endgame-database))
 
 (defun generate-permutations (n max)
   (labels ((permute (lst m)
@@ -257,3 +305,56 @@
                             :countdown 32) states))))
     states))
 
+
+(defun endgame-search (state depth ai endgame-database)
+  (let* ((result (make-utility-move-pair :utility nil :move nil))
+         (max-time (+ (get-internal-run-time) most-positive-fixnum))
+         (player (to-move state))
+         (history (make-hash-table :test #'action-test :hash-function #'action-hash))
+         (killer-moves (make-array 33 :initial-element
+                                   (make-array 2 :initial-element
+                                               (make-array 2 :initial-element nil)))))
+     (dotimes (n depth)
+       (let ((res (max-value state most-negative-fixnum most-positive-fixnum
+                             player (+ n 1) max-time ai history killer-moves endgame-database)))
+         (when (< (get-internal-run-time) max-time)
+           (setf result res)
+           (when (equal (utility-move-pair-utility res) (* 1 +win-utility+)) 
+             (return-from endgame-search
+                          (make-outcome-move-pair :outcome 1
+                                                  :move (utility-move-pair-move res))))
+           (when (equal (utility-move-pair-utility res) (* -1 +win-utility+))
+             (return-from endgame-search
+                          (make-outcome-move-pair :outcome -1
+                                                  :move (utility-move-pair-move res)))))))
+     (make-outcome-move-pair :outcome 0 :move (utility-move-pair-move result))))
+
+
+(defun endgame-compute (n filename)
+  (compute-diagonals)
+  (let ((states (generate-states n))
+        (ais (init-gen))
+        (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
+    (dolist (depth '(8))
+      (dolist (state states)
+        (format t "~a~%" state)
+        (let* ((actions (actions state))
+               (terminal (terminal-test state actions +white+))
+               (utility (terminal-utility-pair-utility terminal)))
+          (if (terminal-utility-pair-terminal terminal)
+            ; TODO: we will always assume we are reading from the pov of white
+            ; so when we read we need to make sure that if white looses and we
+            ; are playing white we return -1 and if white wins and we are
+            ; playing white we return 1, opposite for black!
+            (setf (gethash state endgame-database)
+                  (make-outcome-move-pair :outcome utility
+                                          :move nil))
+            (let ((result (endgame-search state depth (ai-dna (nth 0 ais)) endgame-database)))
+              (if (or (equal (outcome-move-pair-outcome result) 1)
+                      (equal (outcome-move-pair-outcome result) -1))
+                (setf (gethash state endgame-database) result)
+                (when (equal depth 32) (setf (gethash state endgame-database) result))))))
+        (format t "done: result ~a~%" (gethash state endgame-database))))
+    (format t "finished computing ~a piece database~%" n)
+    (dolist (state states)
+      (save-endgame state (gethash state endgame-database) filename))))
