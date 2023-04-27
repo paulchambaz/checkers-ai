@@ -337,7 +337,7 @@
         (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
     (dolist (depth '(8))
       (dotimes (i-state (length states))
-        (format t "~a/~a~%" i-state (length states))
+        (format t "~a/~a~%" (+ i-state 1) (length states))
         (let* ((state (nth i-state states))
                (actions (actions state))
                (terminal (terminal-test state actions +white+))
@@ -358,4 +358,4 @@
     (dolist (state states)
       (let ((result (gethash state endgame-database)))
         (when result
-          (save-endgame state state filename))))))
+          (save-endgame state result filename))))))
