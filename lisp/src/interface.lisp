@@ -17,7 +17,6 @@
         (round (+ (* y +size+) (+ +padding+ +border+)))
         (round +size+)
         (round +size+)))
-  ; (apply #'sdl2:make-rect `(,@(get-rect-dim ,x ,y))))
 
 (defun get-pos-dim (p l)
   "Return the checker space axis position of the screen space position"

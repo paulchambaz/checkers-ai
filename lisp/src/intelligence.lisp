@@ -206,3 +206,54 @@
                       (new-action (make-action :from from :to to :player player :eaten eaten)))
                  (setf (gethash state-hash action-map) new-action))))
     action-map))
+
+
+(defun generate-permutations (n max)
+  (labels ((permute (lst m)
+             (if (= m 1)
+                 (mapcar #'list lst)
+                 (loop for elem in lst append
+                       (mapcar (lambda (sub-perm) (cons elem sub-perm))
+                               (permute (remove elem lst) (- m 1)))))))
+    (remove-duplicates
+     (mapcar (lambda (p)
+               (sort (mapcar #'board-index p) #'<))
+             (permute (loop for i from 0 to (- max 1) collect i) n))
+     :test #'equal)))
+
+(defun generate-boards (squares board)
+  (if (null squares)
+    (list board)
+    (let ((new-boards '()))
+      (dotimes (piece-type 4)
+        (let ((new-board (copy-list board)))
+          (setf (nth (car squares) new-board) (+ piece-type 1))
+          (setf new-boards
+                (nconc new-boards
+                       (generate-boards (cdr squares) new-board)))))
+      new-boards)))
+
+(defun generate-states (n)
+  ; first we generate all possible permutations of the pieces
+  (let ((permutations (generate-permutations n 32))
+        (states '()))
+    ; then for each permutations
+    (dolist (p permutations)
+      ; enumerate the players
+      (dotimes (player 2)
+        ; create the board
+        (dolist (board (generate-boards p (make-list 64 :initial-element 0)))
+          (dolist (eating p)
+            (when (equal (mod (nth eating board) 2) player)
+              (push (make-state :board board
+                                :player player
+                                :eating eating
+                                :previous nil
+                                :countdown 32) states)))
+          (push (make-state :board board
+                            :player player
+                            :eating -1
+                            :previous nil
+                            :countdown 32) states))))
+    states))
+

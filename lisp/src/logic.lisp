@@ -20,6 +20,11 @@
   previous ; list of the six previous actions the state has done
   countdown) ; counter to draw resets when a piece eats
 
+(defun state-equal (s1 s2)
+  (and (equal (state-board s1) (state-board s2))
+       (equal (state-player s1) (state-player s2))
+       (equal (state-eating s1) (state-eating s2))))
+
 (defun copy-state (state)
   (make-state :board (copy-list (state-board state))
               :player (state-player state)

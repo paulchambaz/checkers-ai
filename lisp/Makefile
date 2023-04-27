@@ -20,6 +20,7 @@ clean:
 	@rm -f checkers-ai
 
 debug:
-	@sbcl --load checkers-ai.asd \
+	@sbcl --dynamic-space-size 6144 \
+				--load checkers-ai.asd \
 		    --eval '(ql:quickload :checkers-ai)'
 
