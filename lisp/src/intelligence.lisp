@@ -343,9 +343,8 @@
         (ai (nth 0 (init-gen)))
         (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash))
         (threads nil)
-        (sub-states (divide-states states 4)))
-    (format t "~a~%" (length sub-states))
-    (dolist (depth '(8))
+        (sub-states (divide-states states 12)))
+    (dolist (depth '(8 16 32))
       (dolist (sub-state sub-states)
         (push (sb-thread:make-thread #'process-state :arguments (list sub-state depth ai endgame-database)) threads))
       (mapc #'sb-thread:join-thread threads))
@@ -368,8 +367,21 @@
                   (equal (outcome-move-pair-outcome result) -1))
             (setf (gethash state endgame-database) result)
             (when (equal depth 32) (sb-thread:with-mutex (*endgame-db-mutex*)
-                                                         (setf (gethash state endgame-database) result)))))))))
+                                                         (setf (gethash state endgame-database) result))))))
+      (format t "done processing state~%"))))
 (defun divide-states (states n)
-  (let ((len (length states)))
-    (loop for i from 0 below n
-          collect (subseq states (* i (/ len n)) (* (1+ i) (/ len n))))))
+  (let* ((len (length states))
+         (sublen (floor len n))
+         (extra (mod len n))
+         (result ()))
+    (loop repeat n
+          with start = 0
+          with end = sublen
+          do (progn
+               (when extra
+                 (incf end)
+                 (decf extra))
+               (push (subseq states start end) result)
+               (setf start end
+                     end (+ end sublen)))
+          finally (return (reverse result)))))
