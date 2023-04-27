@@ -3,6 +3,8 @@
 (defstruct utility-move-pair utility move)
 (defstruct outcome-move-pair outcome move)
 
+(defvar *endgame-db-mutex* (sb-thread:make-mutex :name "edb"))
+
 (defun ai-search (state depth ai)
   (let* ((actions (actions state))
          (openings (load-opening "data/opening.csv"))
@@ -39,10 +41,15 @@
     (utility-move-pair-move result)))
 
 (defun max-value (state alpha beta player depth max-time ai history killer-moves endgame-database)
+  ; TODO: we will always assume we are reading from the pov of white
+  ; so when we read we need to make sure that if white looses and we
+  ; are playing white we return -1 and if white wins and we are
+  ; playing white we return 1, opposite for black!
   (let ((actions (actions state))
-        (endgame (gethash state endgame-database)))
+        (endgame (sb-thread:with-mutex (*endgame-db-mutex*) (gethash state endgame-database))))
     (if (and endgame (not (equal (outcome-move-pair-outcome endgame) 0)))
-      (return-from max-value (make-utility-move-pair :utility (* (outcome-move-pair-outcome endgame) +win-utility+)
+      (return-from max-value (make-utility-move-pair :utility (* (outcome-move-pair-outcome endgame)
+                                                                 (if (equal player +white+) 1 -1) +win-utility+)
                                                      :move (outcome-move-pair-move endgame)))
       (if (or (> (get-internal-run-time) max-time) (equal depth 0))
         (return-from max-value (make-utility-move-pair :utility (utility state actions player ai) :move nil))
@@ -68,9 +75,10 @@
 
 (defun min-value (state alpha beta player depth max-time ai history killer-moves endgame-database)
   (let ((actions (actions state))
-        (endgame (gethash state endgame-database)))
+        (endgame (sb-thread:with-mutex (*endgame-db-mutex*) (gethash state endgame-database))))
     (if (and endgame (not (equal (outcome-move-pair-outcome endgame) 0)))
-      (return-from min-value (make-utility-move-pair :utility (* (outcome-move-pair-outcome endgame) +win-utility+)
+      (return-from min-value (make-utility-move-pair :utility (* (outcome-move-pair-outcome endgame)
+                                                                 (if (equal player +white+) 1 -1) +win-utility+)
                                                      :move (outcome-move-pair-move endgame)))
       (if (or (> (get-internal-run-time) max-time) (equal depth 0))
         (return-from min-value (make-utility-move-pair :utility (utility state actions player ai) :move nil))
@@ -167,7 +175,7 @@
 
 ; TODO: we need to write the list of all ways to evaluate the board
 
-(defun compute-opening (p-actions)
+(defun compute-opening (p-actions filename)
   (compute-diagonals)
   (let* ((state (init-state))
          (prior-actions (subseq p-actions 0 (1- (length p-actions))))
@@ -182,7 +190,7 @@
            (from (select-from (nth 0 last-action) actions))
            (to (select-to (nth 1 last-action) from))
            (action (nth 0 to)))
-      (save-opening state action "data/opening.csv"))))
+      (save-opening state action filename))))
 
 (defun save-opening (state action filename)
   (with-open-file (stream filename
@@ -329,33 +337,32 @@
                                                   :move (utility-move-pair-move res)))))))
      (make-outcome-move-pair :outcome 0 :move (utility-move-pair-move result))))
 
-
 (defun endgame-compute (n filename)
   (compute-diagonals)
   (let ((states (generate-states n))
-        (ais (init-gen))
-        (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
+        (ai (nth 0 (init-gen)))
+        (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash))
+        (threads nil))
     (dolist (depth '(8))
-      (dotimes (i-state (length states))
-        (format t "~a/~a~%" (+ i-state 1) (length states))
-        (let* ((state (nth i-state states))
-               (actions (actions state))
-               (terminal (terminal-test state actions +white+))
-               (utility (terminal-utility-pair-utility terminal)))
-          (if (terminal-utility-pair-terminal terminal)
-            ; TODO: we will always assume we are reading from the pov of white
-            ; so when we read we need to make sure that if white looses and we
-            ; are playing white we return -1 and if white wins and we are
-            ; playing white we return 1, opposite for black!
-            (setf (gethash state endgame-database)
-                  (make-outcome-move-pair :outcome utility
-                                          :move nil))
-            (let ((result (endgame-search state depth (ai-dna (nth 0 ais)) endgame-database)))
-              (if (or (equal (outcome-move-pair-outcome result) 1)
-                      (equal (outcome-move-pair-outcome result) -1))
-                (setf (gethash state endgame-database) result)
-                (when (equal depth 32) (setf (gethash state endgame-database) result))))))))
+      (dolist (state states)
+        (push (sb-thread:make-thread #'process-state :arguments (list state depth ai endgame-database)) threads))
+      (mapc #'sb-thread:join-thread threads))
     (dolist (state states)
       (let ((result (gethash state endgame-database)))
-        (when result
-          (save-endgame state result filename))))))
+        (when result (save-endgame state result filename))))))
+
+(defun process-state (state depth ai-dna endgame-database)
+  (let* ((actions (actions state))
+         (terminal (terminal-test state actions +white+))
+         (utility (terminal-utility-pair-utility terminal)))
+    (if (terminal-utility-pair-terminal terminal)
+      (sb-thread:with-mutex (*endgame-db-mutex*)
+                            (setf (gethash state endgame-database)
+                                  (make-outcome-move-pair :outcome utility
+                                                          :move nil)))
+      (let ((result (endgame-search state depth (ai-dna (nth 0 ais)) endgame-database)))
+        (if (or (equal (outcome-move-pair-outcome result) 1)
+                (equal (outcome-move-pair-outcome result) -1))
+          (setf (gethash state endgame-database) result)
+          (when (equal depth 32) (sb-thread:with-mutex (*endgame-db-mutex*)
+                                                       (setf (gethash state endgame-database) result))))))))
