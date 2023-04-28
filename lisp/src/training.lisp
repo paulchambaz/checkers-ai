@@ -208,8 +208,7 @@
         (let* ((opponent (pick-opponent ai generation))
                (res (simulate-set ai (nth opponent generation))))
           (setf (ai-elo ai) (elo (ai-elo ai) (ai-elo (nth opponent generation)) res))
-          ; (setf (ai-elo (nth opponent generation)) (elo (ai-elo (nth opponent generation)) (ai-elo ai) (- 1 res))))))
-          )))
+          (setf (ai-elo (nth opponent generation)) (elo (ai-elo (nth opponent generation)) (ai-elo ai) (- 1 res))))))
     generation))
 
 (defun simulate-set (ai1 ai2)
