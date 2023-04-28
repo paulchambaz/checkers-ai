@@ -53,8 +53,8 @@
 (defconstant +win-utility+ 1000000)
 
 ; traning constant
-(defconstant gen-size 100)
-(defconstant set-number 20)
+(defconstant gen-size 40)
+(defconstant set-number 5)
 (defconstant dna-size 20)
 (defconstant initial-variation 1.0)
 (defconstant generation-variation 0.1)

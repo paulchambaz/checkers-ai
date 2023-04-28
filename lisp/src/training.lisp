@@ -191,12 +191,14 @@
   (setf *random-state* (make-random-state t))
   (format t "starting generation: ~a~%" n)
   (let* ((simulated-gen (simulate-gen gen))
+         (test (format t "finished simulation~%"))
          (new-gen (generate-new-generation simulated-gen))
+         (test (format t "finished mutation~%"))
          (prev-champion (get-champion gen))
          (new-champion (get-champion simulated-gen)))
-
+    ; (format t "generation variation: ~a~%" (generation-variation new-gen))
     (save-gen new-gen (format nil "weights/~a.csv" n))
-    (when (and (not (equal-ai prev-champion new-champion)) (> (generation-variation new-gen) 400.0))
+    (when (or (not (equal-ai prev-champion new-champion)) (> (generation-variation new-gen) 400.0))
       (evolution-step new-gen (+ n 1)))))
 
 (defun simulate-gen (orig-gen)
@@ -206,7 +208,8 @@
         (let* ((opponent (pick-opponent ai generation))
                (res (simulate-set ai (nth opponent generation))))
           (setf (ai-elo ai) (elo (ai-elo ai) (ai-elo (nth opponent generation)) res))
-          (setf (ai-elo (nth opponent generation)) (elo (ai-elo (nth opponent generation)) (ai-elo ai) (- 1 res))))))
+          ; (setf (ai-elo (nth opponent generation)) (elo (ai-elo (nth opponent generation)) (ai-elo ai) (- 1 res))))))
+          )))
     generation))
 
 (defun simulate-set (ai1 ai2)
@@ -236,10 +239,8 @@
         (if (terminal-utility-pair-terminal terminal)
           (cond ((equal utility 1) (return-from match 1))
                 ((equal utility -1) (return-from match 0))
-                ((equal utility 0) (return-from match 0.5)))))
-    )
-    0.5
-))
+                ((equal utility 0) (return-from match 0.5))))))
+    0.5))
 
 (defun pick-opponent (ai gen)
   (let* ((sorted-gen (sort (copy-gen gen) #'< :key #'ai-elo))
@@ -292,10 +293,10 @@
   (/ (+ (ai-elo father) (ai-elo mother)) 2.0))
 
 (defun expected-score (rating-a rating-b)
-  (max 100.0 (/ 1.0 (+ 1.0 (expt 10 (/ (- rating-b rating-a) 400.0))))))
+  (/ 1.0 (+ 1.0 (expt 10 (/ (- rating-b rating-a) 400.0)))))
 
 (defun elo (rating-a rating-b res)
-  (+ rating-a (* 20 (- res (expected-score rating-a rating-b)))))
+  (max 100.0 (+ rating-a (* 20 (- res (expected-score rating-a rating-b))))))
 
 (defun random-range (a b)
   (+ a (coerce (random (coerce (- b a) 'float)) 'float)))
