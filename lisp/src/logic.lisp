@@ -585,3 +585,7 @@
        (equal (state-eating s1) (state-eating s2))
        (equal (state-previous s1) (state-previous s2))
        (equal (state-countdown s1) (state-countdown s2))))
+
+(defun select-subboard (board indexes)
+  (loop for idx in indexes
+        collect (nth idx board)))

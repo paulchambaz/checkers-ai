@@ -2,6 +2,7 @@
 
 (defstruct utility-move-pair utility move)
 (defstruct outcome-move-pair outcome move)
+(defstruct state-outcome-move-pair state outcome move)
 
 (defvar *endgame-db-mutex* (sb-thread:make-mutex :name "edb"))
 
@@ -9,7 +10,8 @@
   (let* ((actions (actions state))
          (openings (load-opening "data/opening-database.csv"))
          (state-hash (state-hash state))
-        (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
+         ; (endgame-database (load-endgame "data/endgame-database.csv")))
+         (endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
     (let ((opening-action (gethash state-hash openings)))
       (if opening-action
         opening-action
@@ -41,10 +43,6 @@
     (utility-move-pair-move result)))
 
 (defun max-value (state alpha beta player depth max-time ai history killer-moves endgame-database)
-  ; TODO: we will always assume we are reading from the pov of white
-  ; so when we read we need to make sure that if white looses and we
-  ; are playing white we return -1 and if white wins and we are
-  ; playing white we return 1, opposite for black!
   (let ((actions (actions state))
         (endgame (sb-thread:with-mutex (*endgame-db-mutex*) (gethash state endgame-database))))
     (if (and endgame (not (equal (outcome-move-pair-outcome endgame) 0)))
@@ -145,35 +143,139 @@
   (> (gethash a1 history 0) (gethash a2 history 0)))
 
 (defun utility (state actions player ai)
+  (format t "MY-AI: ~a~%" ai)
   "Utility function of the algorithm"
   (let ((opponent (switch-player player)))
-  (+ (* (get-weight 0 ai) (count-pawn state player))
-     (* (get-weight 1 ai) (count-pawn state opponent))
-     (* (get-weight 2 ai) (count-king state player))
-     (* (get-weight 3 ai) (count-king state opponent))
-     )))
+  (+ (* (nth 0 ai) (count-pawn state player))
+     (* (nth 1 ai) (count-pawn state opponent))
+     (* (nth 2 ai) (count-king state player))
+     (* (nth 3 ai) (count-king state opponent))
+     (* (nth 4 ai) (count-mobility state actions player))
+     (* (nth 5 ai) (count-mobility state actions opponent))
+     (* (nth 6 ai) (count-eating-mobility state action player))
+     (* (nth 7 ai) (count-eating-mobility state action opponent))
+     (* (nth 8 ai) (count-center-piece state player))
+     (* (nth 9 ai) (count-center-piece state opponent))
+     (* (nth 10 ai) (count-front-piece state player))
+     (* (nth 11 ai) (count-front-piece state opponent))
+     (* (nth 12 ai) (count-back-piece state player))
+     (* (nth 13 ai) (count-back-piece state opponent))
+     (* (nth 14 ai) (count-left-piece state player))
+     (* (nth 15 ai) (count-left-piece state opponent))
+     (* (nth 16 ai) (count-right-piece state player))
+     (* (nth 17 ai) (count-right-piece state opponent))
+     (* (nth 18 ai) (count-side-piece state player))
+     (* (nth 19 ai) (count-side-piece state opponent))
+     (* (nth 20 ai) (count-diagonal-piece state player))
+     (* (nth 21 ai) (count-diagonal-piece state opponent))
+     (* (nth 22 ai) (count-safe-king state player))
+     (* (nth 23 ai) (count-safe-king state opponent))
+     (* (nth 24 ai) (count-safe-pawn state player))
+     (* (nth 25 ai) (count-safe-pawn state opponent))
+     (* (nth 26 ai) (count-supported-piece state player))
+     (* (nth 27 ai) (count-supported-piece state player))
+     (* (nth 28 ai) (count-jumps state player))
+     (* (nth 29 ai) (count-jumps state player)))))
 
 (defun count-pawn (state player)
   "Counts the number of pawns of a player"
-  (if (= player +white+)
+  (if (equal player +white+)
     (count +white-pawn+ (state-board state))
     (count +black-pawn+ (state-board state))))
 
 (defun count-king (state player)
   "Counts the number of kings of a player"
-  (if (= player +white+)
+  (if (equal player +white+)
       (count +white-king+ (state-board state))
       (count +black-king+ (state-board state))))
 
-(defun count-mobility (actions)
-  "Counts the number of moves available to a player"
-    (list-length actions))
+(defun count-mobility (state actions player)
+  "Counts the number of moves available to a player if it is their turn"
+  (if (equal (to-move state) player)
+    (length actions)
+    0))
 
-; (defun count-safe-checkers (state player)
-;   "Count the number of safe kings the player has"
-;   (
+(defun count-eating-mobility (state actions player)
+  "Count the number of eating moves available to a player if it is their turn"
+  (if (equal (to-move state) player)
+    (length (select-eating actions))
+    0))
 
-; TODO: we need to write the list of all ways to evaluate the board
+(defun count-center-piece (state player)
+  "Count the number of pieces in the center"
+  (if (equal player +white+)
+    (let ((sub-board (select-subboard (state-board state) (list 26 28 35 37))))
+      (+ (count +white-pawn+ sub-board) (count +white-king+ sub-board)))
+    (let ((sub-board (select-subboard (state-board state) (list 26 28 35 37))))
+      (+ (count +black-pawn+ sub-board) (count +black-king+ sub-board)))))
+
+(defun count-front-piece (state player)
+  "Count the number of piece in the front"
+  (if (equal player +white+)
+    (let ((sub-board (select-subboard (state-board state) (list 1 3 5 7 8 10 12 14))))
+      (+ (count +white-pawn+ sub-board) (count +white-king+ sub-board)))
+    (let ((sub-board (select-subboard (state-board state) (list 49 51 53 55 56 58 60 62))))
+      (+ (count +black-pawn+ sub-board) (count +black-king+ sub-board)))))
+
+(defun count-back-piece (state player)
+  "Count the number of piece in the back"
+  (if (equal player +white+)
+    (let ((sub-board (select-subboard (state-board state) (list 49 51 53 55 56 58 60 62))))
+      (+ (count +white-pawn+ sub-board) (count +white-king+ sub-board)))
+    (let ((sub-board (select-subboard (state-board state) (list 1 3 5 7 8 10 12 14))))
+      (+ (count +black-pawn+ sub-board) (count +black-king+ sub-board)))))
+
+(defun count-left-piece (state player)
+  "Count the number of piece in the left"
+  (if (equal player +white+)
+    (let ((sub-board (select-subboard (state-board state) (list 40 42 49 56 58))))
+      (+ (count +white-pawn+ sub-board) (count +white-king+ sub-board)))
+    (let ((sub-board (select-subboard (state-board state) (list 5 7 14 21 23))))
+      (+ (count +black-pawn+ sub-board) (count +black-king+ sub-board)))))
+
+(defun count-right-piece (state player)
+  "Count the number of piece in the right"
+  (if (equal player +white+)
+    (let ((sub-board (select-subboard (state-board state) (list 46 53 55 62))))
+      (+ (count +white-pawn+ sub-board) (count +white-king+ sub-board)))
+    (let ((sub-board (select-subboard (state-board state) (list 1 8 10 17))))
+      (+ (count +black-pawn+ sub-board) (count +black-king+ sub-board)))))
+
+(defun count-side-piece (state player)
+  "Count the number of piece in the side"
+  (if (equal player +white+)
+    (let ((sub-board (select-subboard (state-board state) (list 7 8 23 24 39 40 55 56))))
+      (+ (count +white-pawn+ sub-board) (count +white-king+ sub-board)))
+    (let ((sub-board (select-subboard (state-board state) (list 7 8 23 24 39 40 55 56))))
+      (+ (count +black-pawn+ sub-board) (count +black-king+ sub-board)))))
+
+(defun count-diagonal-piece (state player)
+  "Count the number of piece on the diagonal"
+  (if (equal player +white+)
+    (let ((sub-board (select-subboard (state-board state) (list 7 14 21 28 35 42 49 56))))
+      (+ (count +white-pawn+ sub-board) (count +white-king+ sub-board)))
+    (let ((sub-board (select-subboard (state-board state) (list 7 14 21 28 35 42 49 56))))
+      (+ (count +black-pawn+ sub-board) (count +black-king+ sub-board)))))
+
+(defun count-safe-king (state player)
+  "Count the number of king that are safe"
+  ; TODO: add king safety
+  0)
+
+(defun count-safe-pawn (state player)
+  "Count the number of safe pawns"
+  ; TODO: add pawn safety
+  0)
+
+(defun count-supported-piece (state player)
+  "Count the number of supported piece"
+  ; TODO: add supported
+  0)
+
+(defun count-jumps (state player)
+  "Count the number of jumps"
+  ; TODO: add jumps
+  0)
 
 (defun compute-opening (p-actions filename)
   (compute-diagonals)
@@ -241,6 +343,85 @@
                 state-hash
                 t-outcome)))))
 
+(defun save-state-outcome-move-pair (state-outcome-move-pair stream)
+  (let* ((state (state-outcome-move-pair-state state-outcome-move-pair))
+         (board (state-board state))
+         (outcome (state-outcome-move-pair-outcome state-outcome-move-pair))
+         (move (state-outcome-move-pair-move state-outcome-move-pair)))
+    (format stream "~a~a~a~a,~a~a~a~a,~a~a~a~a,~a~a~a~a,~a~a~a~a,~a~a~a~a,~a~a~a~a,~a~a~a~a,~a,~a,~a~a~%"
+            (nth 1 board)
+            (nth 3 board)
+            (nth 5 board)
+            (nth 7 board)
+            (nth 8 board)
+            (nth 10 board)
+            (nth 12 board)
+            (nth 14 board)
+            (nth 17 board)
+            (nth 19 board)
+            (nth 21 board)
+            (nth 23 board)
+            (nth 24 board)
+            (nth 26 board)
+            (nth 28 board)
+            (nth 30 board)
+            (nth 33 board)
+            (nth 35 board)
+            (nth 37 board)
+            (nth 39 board)
+            (nth 40 board)
+            (nth 42 board)
+            (nth 44 board)
+            (nth 46 board)
+            (nth 49 board)
+            (nth 51 board)
+            (nth 53 board)
+            (nth 55 board)
+            (nth 56 board)
+            (nth 58 board)
+            (nth 60 board)
+            (nth 62 board)
+            (state-player state)
+            (state-eating state)
+            outcome
+            (if move
+              (format nil ",~a,~a,~a,~a"
+                      (action-from move)
+                      (action-to move)
+                      (action-player move)
+                      (action-eaten move))
+              ""))))
+
+(defun load-state-outcome-move-pair (line)
+  (let* ((tokens (split-string line ","))
+         (row-1 (nth 0 tokens))
+         (row-2 (nth 1 tokens))
+         (row-3 (nth 2 tokens))
+         (row-4 (nth 3 tokens))
+         (row-5 (nth 4 tokens))
+         (row-6 (nth 5 tokens))
+         (row-7 (nth 6 tokens))
+         (row-8 (nth 7 tokens))
+         (player (parse-integer (nth 8 tokens)))
+         (eating (parse-integer (nth 9 tokens)))
+         (outcome (parse-integer (nth 10 tokens))))
+    (let ((board (list 0 (parse-integer (string (char row-1 0))) 0 (parse-integer (string (char row-1 1))) 0 (parse-integer (string (char row-1 2))) 0 (parse-integer (string (char row-1 3)))
+                       (parse-integer (string (char row-2 0))) 0 (parse-integer (string (char row-2 1))) 0 (parse-integer (string (char row-2 2))) 0 (parse-integer (string (char row-2 3))) 0
+                       0 (parse-integer (string (char row-3 0))) 0 (parse-integer (string (char row-3 1))) 0 (parse-integer (string (char row-3 2))) 0 (parse-integer (string (char row-3 3)))
+                       (parse-integer (string (char row-4 0))) 0 (parse-integer (string (char row-4 1))) 0 (parse-integer (string (char row-4 2))) 0 (parse-integer (string (char row-4 3))) 0
+                       0 (parse-integer (string (char row-5 0))) 0 (parse-integer (string (char row-5 1))) 0 (parse-integer (string (char row-5 2))) 0 (parse-integer (string (char row-5 3)))
+                       (parse-integer (string (char row-6 0))) 0 (parse-integer (string (char row-6 1))) 0 (parse-integer (string (char row-6 2))) 0 (parse-integer (string (char row-6 3))) 0
+                       0 (parse-integer (string (char row-7 0))) 0 (parse-integer (string (char row-7 1))) 0 (parse-integer (string (char row-7 2))) 0 (parse-integer (string (char row-7 3)))
+                       (parse-integer (string (char row-8 0))) 0 (parse-integer (string (char row-8 1))) 0 (parse-integer (string (char row-8 2))) 0 (parse-integer (string (char row-8 3))) 0)))
+      (make-state-outcome-move-pair
+        :state (make-state :board board
+                           :player player
+                           :eating eating
+                           :previous nil
+                           :countdown 32)
+        :outcome outcome
+        :move nil))))
+
 (defun load-endgame (filename)
   (let ((endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
     (with-open-file (stream filename
@@ -248,20 +429,10 @@
                             :if-does-not-exist :error)
       (loop for line = (read-line stream nil)
             while line
-            do (let* ((tokens (split-string line ","))
-                      (state-hash (parse-integer (nth 0 tokens)))
-                      (outcome (parse-integer (nth 1 tokens)))
-                      (from (parse-integer (nth 2 tokens)))
-                      (to (parse-integer (nth 3 tokens)))
-                      (player (parse-integer (nth 4 tokens)))
-                      (eaten (parse-integer (nth 5 tokens)))
-                      (new-move (make-action :from from
-                                               :to to
-                                               :player player
-                                               :eaten eaten))
-                      (new-outcome (make-outcome-move-pair :outcome outcome
-                                                           :move new-move)))
-                 (setf (gethash state-hash endgame-database) new-outcome))))
+            do (let ((som (load-state-outcome-move-pair line)))
+                 (setf (gethash (state-outcome-move-pair-state som) endgame-database)
+                       (make-outcome-move-pair :outcome (state-outcome-move-pair-outcome som)
+                                               :move (state-outcome-move-pair-move som))))))
     endgame-database))
 
 (defun generate-permutations (n max)
@@ -351,6 +522,26 @@
     (dolist (state states)
       (let ((result (gethash state endgame-database)))
         (when result (save-endgame state result filename))))))
+
+(defun find-state (hash states)
+  (find-if (lambda (state) (equal hash (state-hash state))) states))
+
+(defun endgame-convert (n input-filename output-filename)
+  (let* ((endgame-database (load-endgame input-filename))
+         (states (generate-states n)))
+    (with-open-file (out output-filename
+                         :direction :output
+                         :if-exists :append)
+      (dolist (hash-value endgame-database)
+        (let* ((hash (car hash-value))
+               (omp (cdr hash-value))
+               (state (find-state hash states)))
+          (when state
+            (save-state-outcome-move-pair
+              (make-state-outcome-move-pair :state state
+                                            :outcome (outcome-move-pair-outcome omp)
+                                            :move (outcome-move-pair-move omp))
+              out)))))))
 
 (defun process-state (states depth ai endgame-database)
   (dolist (state states)

@@ -5,7 +5,7 @@
   :author "Moncef Bouhabei, Paul Chambaz"
   :description "A very simple ai for the game of checkers"
   :license "GPLv3"
-  :depends-on ("sdl2")
+  :depends-on (:sdl2 :uiop)
   :components ((:module "src"
                 :components ((:file "package")
                              (:file "main")
