@@ -55,19 +55,70 @@
         gen))
     gen))
 
-; TODO: fix the big bad bug - 30 minutes
-
-; TODO: fix the thing which bugs in training for the ai - do everything step by step
-
-; TODO: write the function to get the average generation
-; which involves simulating the gen, sorting it by elo, then storing it to a
-; file - this can take a long time
-
 ; TODO: write what is necessary to have easy medium and hard difficulty
 ; - easy limit depth to 5, do not use opening or endgame databse
 ; - medium pick the average ai, do not use opening or endgame database, use 3 seconds max
 ; - hard use the best ai, use the opening and the endgame database, use 10 seconds max
 ; this should take 20 minutes
+
+(defun gaussian (a)
+  (+ (* a (random-range -1.0 1.0))
+     (* a (random-range -1.0 1.0))
+     (* a (random-range -1.0 1.0))
+     (* a (random-range -1.0 1.0))
+     (* a (random-range -1.0 1.0))
+     (* a (random-range -1.0 1.0))
+     (* a (random-range -1.0 1.0))
+     (* a (random-range -1.0 1.0))
+     (* a (random-range -1.0 1.0))
+     (* a (random-range -1.0 1.0))))
+
+(defun get-gen-from-champion (champion)
+  (let ((gen nil))
+    (dotimes (i 64)
+      (push
+        (make-ai
+          :dna (make-dna
+                 (+ (nth 0 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 1 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 2 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 3 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 4 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 5 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 6 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 7 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 8 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 9 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 10 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 11 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 12 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 13 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 14 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 15 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 16 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 17 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 18 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 19 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 20 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 21 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 22 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 23 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 24 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 25 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 26 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 27 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 28 (ai-dna champion)) (gaussian 0.5))
+                 (+ (nth 29 (ai-dna champion)) (gaussian 0.5))
+                 )
+          :elo (ai-elo champion))
+        gen))
+    gen))
+
+(defun get-average-ai (champion filename)
+  (let ((gen (get-gen-from-champion champion))
+        (sim-gen (simulate-gen gen))
+        (sorted-gen (sort (copy-gen sim-gen) #'< :key #'ai-elo)))
+    (save-gen sorted-gen sorted-gen filename)))
 
 (defun save-gen (gen filename)
   (with-open-file (stream filename
@@ -120,15 +171,15 @@
     gen))
 
 (defun evolution-step (gen n)
-  ; TODO: add random for each subsequent step
-  ; (setf *random-state* (make-random-state t))
+  (compute-diagonals)
+  (setf *random-state* (make-random-state t))
   (format t "starting generation: ~a~%" n)
-  ; (format t "length of the current generation: ~a~%" (length gen))
-  ; (format t "~a~%" gen)
   (let* ((simulated-gen (simulate-gen gen))
          (new-gen (generate-new-generation simulated-gen))
          (prev-champion (get-champion gen))
          (new-champion (get-champion simulated-gen)))
+
+    (save-gen new-gen (format nil "weights/~a.csv" n))
     (when (not (equal-ai prev-champion new-champion))
       (evolution-step new-gen (+ n 1)))))
 
@@ -145,11 +196,34 @@
 (defun simulate-set (ai1 ai2)
   (if (< (random 1.0) .5)
     (match ai1 ai2)
-    (match ai2 ai1)))
+    (match ai1 ai2)))
+
+(defun ai-turn (state ai)
+  (let ((move (ai-search state +search-depth+ (ai-dna ai))))
+    (result move state)))
 
 (defun match (white black)
-  1 ; in this case white always win
-)
+  (let* ((state (init-state)))
+    (dotimes (i 256)
+      (ai-turn state white)
+      (let* ((actions (actions state))
+             (terminal (terminal-test state actions +white+))
+             (utility (terminal-utility-pair-utility terminal)))
+        (if (terminal-utility-pair-terminal terminal)
+          (cond ((equal utility 1) (return-from match 1))
+                ((equal utility -1) (return-from match 0))
+                ((equal utility 0) (return-from match 0.5)))))
+      (ai-turn state black)
+      (let* ((actions (actions state))
+             (terminal (terminal-test state actions +white+))
+             (utility (terminal-utility-pair-utility terminal)))
+        (if (terminal-utility-pair-terminal terminal)
+          (cond ((equal utility 1) (return-from match 1))
+                ((equal utility -1) (return-from match 0))
+                ((equal utility 0) (return-from match 0.5)))))
+    )
+    0.5
+))
 
 (defun pick-opponent (ai gen)
   (let* ((sorted-gen (sort (copy-gen gen) #'< :key #'ai-elo))

@@ -46,7 +46,7 @@
   (let ((actions (actions state))
         (endgame (sb-thread:with-mutex (*endgame-db-mutex*) (gethash state endgame-database))))
     (if (and endgame (not (equal (outcome-move-pair-outcome endgame) 0)))
-      (return-from max-value (make-utility-move-pair :utility (* (outcome-move-pair-outcome endgame)
+        (return-from max-value (make-utility-move-pair :utility (* (outcome-move-pair-outcome endgame)
                                                                  (if (equal player +white+) 1 -1) +win-utility+)
                                                      :move (outcome-move-pair-move endgame)))
       (if (or (> (get-internal-run-time) max-time) (equal depth 0))
@@ -143,7 +143,6 @@
   (> (gethash a1 history 0) (gethash a2 history 0)))
 
 (defun utility (state actions player ai)
-  (format t "MY-AI: ~a~%" ai)
   "Utility function of the algorithm"
   (let ((opponent (switch-player player)))
   (+ (* (nth 0 ai) (count-pawn state player))
@@ -152,8 +151,8 @@
      (* (nth 3 ai) (count-king state opponent))
      (* (nth 4 ai) (count-mobility state actions player))
      (* (nth 5 ai) (count-mobility state actions opponent))
-     (* (nth 6 ai) (count-eating-mobility state action player))
-     (* (nth 7 ai) (count-eating-mobility state action opponent))
+     (* (nth 6 ai) (count-eating-mobility state actions player))
+     (* (nth 7 ai) (count-eating-mobility state actions opponent))
      (* (nth 8 ai) (count-center-piece state player))
      (* (nth 9 ai) (count-center-piece state opponent))
      (* (nth 10 ai) (count-front-piece state player))
