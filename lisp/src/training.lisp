@@ -14,6 +14,22 @@
   (and (equal (ai-dna ai1) (ai-dna ai2))
        (equal (ai-elo ai1) (ai-elo ai2))))
 
+(defun dna-distance (ai1 ai2)
+  (let ((dna1 (ai-dna ai1))
+        (dna2 (ai-dna ai2)))
+    (reduce #'+
+            (mapcar #'abs
+                    (mapcar #'-
+                            dna1
+                            dna2)))))
+
+(defun generation-variation (gen)
+  (let ((champion (get-champion gen)))
+    (reduce #'+
+            (mapcar (lambda (ai)
+                      (dna-distance ai champion))
+                    gen))))
+
 (defun init-gen ()
   (let ((gen nil))
     (dotimes (i gen-size)
@@ -51,7 +67,7 @@
                  (random-range -40.0 -20.0)  ; jump count for player 1
                  (random-range 20.0 40.0)    ; jump count for player 2
                  )
-          :elo (random-range 100.0 2000.0))
+          :elo 1000.0)
         gen))
     gen))
 
@@ -180,7 +196,7 @@
          (new-champion (get-champion simulated-gen)))
 
     (save-gen new-gen (format nil "weights/~a.csv" n))
-    (when (not (equal-ai prev-champion new-champion))
+    (when (and (not (equal-ai prev-champion new-champion)) (> (generation-variation new-gen) 400.0))
       (evolution-step new-gen (+ n 1)))))
 
 (defun simulate-gen (orig-gen)
@@ -273,10 +289,10 @@
       (append (subseq (ai-dna mother) 0 (round point)) (subseq (ai-dna father) (round point))))))
 
 (defun cross-elo (father mother)
-  (/ (+ (ai-elo father) (ai-elo mother)) 2))
+  (/ (+ (ai-elo father) (ai-elo mother)) 2.0))
 
 (defun expected-score (rating-a rating-b)
-  (/ 1 (+ 1 (expt 10 (/ (- rating-b rating-a) 400)))))
+  (max 100.0 (/ 1.0 (+ 1.0 (expt 10 (/ (- rating-b rating-a) 400.0))))))
 
 (defun elo (rating-a rating-b res)
   (+ rating-a (* 20 (- res (expected-score rating-a rating-b)))))
