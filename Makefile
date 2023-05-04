@@ -1,26 +1,32 @@
-c: clean
-	@mkdir -p release/c
-	@make -C c/build build
-	@mv c/checkers-ai release/c
-	@cp -r c/data release/c
+run:
+	@sbcl --load checkers-ai.asd \
+		--eval '(ql:quickload :checkers-ai)' \
+		--eval '(checkers-ai:main)' \
+		--eval '(exit)'
 
-lisp: clean
-	@mkdir -p release/lisp
-	@make -C lisp build
-	@mv lisp/checkers-ai release/lisp
-	@cp -r lisp/data release/lisp
+build: clean
+	@sbcl --non-interactive \
+		--load checkers-ai.asd \
+		--eval '(ql:quickload :checkers-ai)' \
+		--eval '(asdf:make :checkers-ai)'
 
-paper: clean
-	@make -C paper doc
+test:
+	@sbcl --non-interactive \
+		--load checkers-ai.asd \
+		--eval '(ql:quickload :checkers-ai)' \
+		--eval '(asdf:test-system :checkers-ai)'
 
 clean:
+	@rm -f checkers-ai
 
-full-clean:
-	@rm -fr release
+debug:
+	@sbcl --dynamic-space-size 4096 \
+		--load checkers-ai.asd \
+		--eval '(ql:quickload :checkers-ai)'
 
-build: c lisp
-	@mkdir checkers-ia-bouhabei-chambaz
-	@cp -r c lisp release README.md Makefile checkers-ia-bouhabei-chambaz
-	@cp paper/compte_rendu.pdf checkers-ia-bouhabei-chambaz/
-	@zip -r checkers-ia-bouhabei-chambaz.zip checkers-ia-bouhabei-chambaz
-	@rm -fr checkers-ia-bouhabei-chambaz
+compute-database:
+	@sbcl --dynamic-space-size 12288 \
+		--load checkers-ai.asd \
+		--eval '(ql:quickload :checkers-ai)' \
+		--eval '(checkers-ai::endgame-compute $(piece) "data/endgame-database.csv")' \
+		--eval '(exit)'
