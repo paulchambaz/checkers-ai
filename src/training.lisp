@@ -5,16 +5,20 @@
   elo)
 
 (defun make-dna (w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30)
+  "Creates the dna of a certain ai"
   (list w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30))
 
 (defun copy-gen (orig-gen)
+  "Deep copies an ai generation"
   (mapcar #'copy-ai orig-gen))
 
 (defun equal-ai (ai1 ai2)
+  "Deep equal two ais"
   (and (equal (ai-dna ai1) (ai-dna ai2))
        (equal (ai-elo ai1) (ai-elo ai2))))
 
 (defun dna-distance (ai1 ai2)
+  "Computes the distance between two ais dna"
   (let ((dna1 (ai-dna ai1))
         (dna2 (ai-dna ai2)))
     (reduce #'+
@@ -24,6 +28,7 @@
                             dna2)))))
 
 (defun generation-variation (gen)
+  "Computes the total variation in two generations"
   (let ((champion (get-champion gen)))
     (reduce #'+
             (mapcar (lambda (ai)
@@ -31,6 +36,7 @@
                     gen))))
 
 (defun init-gen ()
+  "Initializes the 1st generation of ais"
   (let ((gen nil))
     (dotimes (i gen-size)
       (push
@@ -71,13 +77,8 @@
         gen))
     gen))
 
-; TODO: write what is necessary to have easy medium and hard difficulty
-; - easy limit depth to 5, do not use opening or endgame databse
-; - medium pick the average ai, do not use opening or endgame database, use 3 seconds max
-; - hard use the best ai, use the opening and the endgame database, use 10 seconds max
-; this should take 20 minutes
-
 (defun gaussian (a)
+  "Creates a gaussian random number from a psoedo standard deviation"
   (+ (* a (random-range -1.0 1.0))
      (* a (random-range -1.0 1.0))
      (* a (random-range -1.0 1.0))
@@ -90,6 +91,7 @@
      (* a (random-range -1.0 1.0))))
 
 (defun get-gen-from-champion (champion)
+  "Create a new generation from a champion"
   (let ((gen nil))
     (dotimes (i 64)
       (push
@@ -131,12 +133,14 @@
     gen))
 
 (defun get-average-ai (champion filename)
+  "Compute the tournament for the average ai"
   (let ((gen (get-gen-from-champion champion))
         (sim-gen (simulate-gen gen))
         (sorted-gen (sort (copy-gen sim-gen) #'< :key #'ai-elo)))
     (save-gen sorted-gen sorted-gen filename)))
 
 (defun save-gen (gen filename)
+  "Save an ai generation to a file"
   (with-open-file (stream filename
                           :direction :output
                           :if-exists :supersede
@@ -145,7 +149,9 @@
       (format stream "~{~a,~}~a~%" (ai-dna ai) (ai-elo ai)))))
 
 
+; TODO: fix this
 (defun parse-number (line)
+  "Parse a number from a line"
   (loop
     :with n := (length line)
     :for pos := 0 :then chars
@@ -155,6 +161,7 @@
     :collect float))
 
 (defun load-gen (filename)
+  "Load a generation from a file"
   (let ((gen nil))
     (with-open-file (stream filename
                             :direction :input
@@ -197,6 +204,7 @@
     gen))
 
 (defun evolution-step (gen n)
+  "Compute a generation in the genetic algorithm from a generation"
   (compute-diagonals)
   (setf *random-state* (make-random-state t))
   (format t "starting generation: ~a~%" n)
@@ -212,6 +220,7 @@
       (evolution-step new-gen (+ n 1)))))
 
 (defun simulate-gen (orig-gen)
+  "Simulate an entire generation tournament"
   (let ((generation (copy-gen orig-gen)))
     (dotimes (j set-number)
       (dolist (ai generation)
@@ -222,15 +231,18 @@
     generation))
 
 (defun simulate-set (ai1 ai2)
+  "Simulate a set between two ais"
   (if (< (random 1.0) .5)
     (match ai1 ai2)
     (match ai1 ai2)))
 
 (defun ai-turn (state ai)
+  "Simulate a turn for an ai"
   (let ((move (ai-search state +search-depth+ (ai-dna ai))))
     (result move state)))
 
 (defun match (white black)
+  "Match between two ais"
   (let* ((state (init-state)))
     (dotimes (i 256)
       (ai-turn state white)
@@ -252,6 +264,7 @@
     0.5))
 
 (defun pick-opponent (ai gen)
+  "Picks an opponent for the ai in the relevant ladder"
   (let* ((sorted-gen (sort (copy-gen gen) #'< :key #'ai-elo))
          (elo (ai-elo ai))
          (index (position ai sorted-gen :test #'equal-ai))
@@ -263,6 +276,7 @@
     (position opponent gen :test #'equal-ai)))
 
 (defun generate-new-generation (orig-gen)
+  "Creates a new generation from a sorted original generation"
   (let ((new-gen nil)
         (champion (get-champion orig-gen)))
     (dotimes (i (- (length orig-gen) 1))
@@ -273,9 +287,11 @@
   new-gen))
 
 (defun get-champion (gen)
+  "Get the champion of a generation"
   (reduce (lambda (a b) (if (> (ai-elo a) (ai-elo b)) a b)) gen))
 
 (defun pick-random-gen (gen)
+  "Pick a random member of a generation"
   (let* ((total-elo (reduce #'+ gen :key #'ai-elo))
          (random-elo (random total-elo))
          (accumulated-elo 0))
@@ -285,13 +301,16 @@
           return ai)))
 
 (defun generate-new-ai (father mother)
+  "Generates a new ai from two parents"
   (make-ai :dna (mutate-dna (cross-over-dnas father mother))
            :elo (cross-elo father mother)))
 
 (defun mutate-dna (dna)
+  "Mutates the dna of two ais"
   (mapcar (lambda (weight) (+ (random-range -0.1 0.1) weight (* weight (random-range -0.1 0.1)))) dna))
 
 (defun cross-over-dnas (father mother)
+  "Crosses over the dnas of two ais"
   (let ((point (* 30 (/ (ai-elo father) (+ (ai-elo father) (ai-elo mother)))))
         (direction (random 1.0)))
     (if (< direction .5)
@@ -299,13 +318,17 @@
       (append (subseq (ai-dna mother) 0 (round point)) (subseq (ai-dna father) (round point))))))
 
 (defun cross-elo (father mother)
+  "Crosses the elo of two ais"
   (/ (+ (ai-elo father) (ai-elo mother)) 2.0))
 
 (defun expected-score (rating-a rating-b)
+  "Computes the expectore score for ELO from the previous ELO"
   (/ 1.0 (+ 1.0 (expt 10 (/ (- rating-b rating-a) 400.0)))))
 
 (defun elo (rating-a rating-b res)
+  "Computes the ELO after the end of a match"
   (max 100.0 (+ rating-a (* 20 (- res (expected-score rating-a rating-b))))))
 
 (defun random-range (a b)
+  "Creates a random float between a and b"
   (+ a (coerce (random (coerce (- b a) 'float)) 'float)))

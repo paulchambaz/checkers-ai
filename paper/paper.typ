@@ -4,8 +4,8 @@
   title: [ Application of Alpha-Beta Pruning to Checkers],
   authors: (
     (
-      name: "Moncef Bouhabei",
-      email: "moncef.bouhabei@u-paris.fr",
+      name: "Moncef Bouhabel",
+      email: "moncef.bouhabel@u-paris.fr",
     ),
     (
       name: "Paul Chambaz",

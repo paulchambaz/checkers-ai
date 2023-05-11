@@ -47,6 +47,7 @@
     (result move state)))
 
 (defun easy-ai-turn (state)
+  "Easy ai - see paper for more detail"
   (result (ai-search
             state
             4
@@ -57,6 +58,7 @@
           state))
 
 (defun medium-ai-turn (state)
+  "Medium ai - see paper for more detail"
   (result (ai-search
             state
             32
@@ -67,6 +69,7 @@
           state))
 
 (defun hard-ai-turn (state)
+  "Hard ai - see paper for more detail"
   (result (ai-search
             state
             32
@@ -76,6 +79,7 @@
           state))
 
 (defun main ()
+  "Main function for the problem"
   (let ((args (uiop:command-line-arguments)))
     (setf *random-state* (make-random-state t))
     (compute-diagonals)

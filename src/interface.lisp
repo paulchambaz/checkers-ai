@@ -135,4 +135,5 @@
     (draw-hint (action-to action) renderer)))
 
 (defun mouse-pressed ()
+  "Returns if the mouse has been pressed"
   (and (not (null *mouse*)) (null *prev-mouse*)))

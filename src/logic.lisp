@@ -21,11 +21,13 @@
   countdown) ; counter to draw resets when a piece eats
 
 (defun state-equal (s1 s2)
+  "Compares if two states are equal"
   (and (equal (state-board s1) (state-board s2))
        (equal (state-player s1) (state-player s2))
        (equal (state-eating s1) (state-eating s2))))
 
 (defun copy-state (state)
+  "Deep copies a state"
   (make-state :board (copy-list (state-board state))
               :player (state-player state)
               :eating (state-eating state)
@@ -48,6 +50,7 @@
     board))
 
 (defun init-state ()
+  "Initializes the default state"
   (make-state :board (init-board)
               :player +white+
               :eating -1
@@ -178,14 +181,15 @@
 
   (return-from terminal-test (make-terminal-utility-pair :terminal nil :utility 0)))
 
-(defun black-terminal-test (state)
-  (equal (list-length (get-blacks (state-board state))) 0))
-
-(defun white-terminal-test (state)
-  (equal (list-length (get-whites (state-board state))) 0))
+; (defun black-terminal-test (state)
+;   (equal (list-length (get-blacks (state-board state))) 0))
+;
+; (defun white-terminal-test (state)
+;   (equal (list-length (get-whites (state-board state))) 0))
 
 
 (defun push-previous (action state)
+  "Adds to the list of previous actions"
   (push action (state-previous state))
   (when (> (length (state-previous state)) 6) 
     (setf (state-previous state) (subseq (state-previous state) 0 6))))
@@ -493,11 +497,13 @@
         out)))
 
 (defun board-index (index)
+  "Get the index on the board"
   (let ((row (floor index 4))
         (column (mod index 4)))
     (+ (* row 8) (* 2 column) (- 1 (mod row 2)))))
 
 (defmethod print-object ((obj action) stream)
+  "Format of an action"
   (let ((from (action-from obj))
         (to (action-to obj))
         (player (action-player obj))
@@ -512,6 +518,7 @@
             eaten)))
 
 (defmethod print-object ((obj state) stream)
+  "Format of a state"
   (let ((board (state-board obj))
         (player (state-player obj))
         (eating (state-eating obj))
@@ -532,18 +539,21 @@
             previous)))
 
 (defun action-hash (action)
+  "Hash for an action"
   (+ (* 1627 (action-from action))
      (* 4969 (action-to action))
      (* 1171 (action-player action))
      (* 6029 (action-eaten action))))
 
 (defun action-test (a1 a2)
+  "Deep equal for an action"
   (and (equal (action-from a1) (action-from a2))
        (equal (action-to a1) (action-to a2))
        (equal (action-player a1) (action-player a2))
        (equal (action-eaten a1) (action-eaten a2))))
 
 (defun state-hash (state)
+  "Hash for a state"
   (+ (* 142699 (state-eating state))
      (* 153427 (state-player state))
      (* 175727 (nth 1 (state-board state)))
@@ -580,6 +590,7 @@
      (* 966619 (nth 62 (state-board state)))))
 
 (defun state-test (s1 s2)
+  "Deep equal for a state"
   (and (equal (state-board s1) (state-board s2))
        (equal (state-player s1) (state-player s2))
        (equal (state-eating s1) (state-eating s2))
@@ -587,5 +598,6 @@
        (equal (state-countdown s1) (state-countdown s2))))
 
 (defun select-subboard (board indexes)
+  "Selects a subarea of the board"
   (loop for idx in indexes
         collect (nth idx board)))

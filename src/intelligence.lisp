@@ -7,6 +7,7 @@
 (defvar *endgame-db-mutex* (sb-thread:make-mutex :name "edb"))
 
 (defun ai-search (state depth search-time ai opening-database endgame-database)
+  "Main function for the ai search"
   (let* ((actions (actions state))
          (openings opening-database)
          (state-hash (state-hash state))
@@ -19,6 +20,7 @@
           (iterative-alpha-beta-search state depth search-time ai endgame-database))))))
 
 (defun iterative-alpha-beta-search (state depth search-time ai endgame-database)
+  "Iterative minimax search with alpha beta pruning and endgame database"
   (if (equal (to-move state) +white+)
     (format t "white ")
     (format t "black "))
@@ -42,6 +44,7 @@
     (utility-move-pair-move result)))
 
 (defun max-value (state alpha beta player depth max-time ai history killer-moves endgame-database)
+  "Max function for minimax"
   (let ((actions (actions state))
         (endgame (sb-thread:with-mutex (*endgame-db-mutex*) (gethash state endgame-database))))
     (if (and endgame (not (equal (outcome-move-pair-outcome endgame) 0)))
@@ -71,6 +74,7 @@
               best)))))))
 
 (defun min-value (state alpha beta player depth max-time ai history killer-moves endgame-database)
+  "Min function for minimax"
   (let ((actions (actions state))
         (endgame (sb-thread:with-mutex (*endgame-db-mutex*) (gethash state endgame-database))))
     (if (and endgame (not (equal (outcome-move-pair-outcome endgame) 0)))
@@ -100,6 +104,7 @@
               best)))))))
 
 (defun order-moves (actions player depth history killer-moves)
+  "Move ordering function for minimax with alpha beta pruning"
   ; sort the actions based on their history
   (let ((sorted-actions (stable-sort (if (equal player +white+) actions (reverse actions))
                                      (lambda (a1 a2) (compare-frequencies a1 a2 history))))
@@ -121,12 +126,14 @@
     (append (reverse killer-moves-actions) (reverse non-killer-moves-actions))))
 
 (defun update-history (action history)
+  "Updates the history hashmap"
   (let ((frequency (gethash action history)))
     (if frequency
         (setf (gethash action history) (+ frequency 1))
         (setf (gethash action history) 0))))
 
 (defun update-killer-moves (action player depth killer-moves history)
+  "Updates the killer moves"
   (let* ((current-killer-moves (aref (aref killer-moves depth) player))
          (action-value (gethash action history)))
     (cond
@@ -139,6 +146,7 @@
        (setf (aref current-killer-moves 1) action)))))
 
 (defun compare-frequencies (a1 a2 history)
+  "Compares the frequency from the history table"
   (> (gethash a1 history 0) (gethash a2 history 0)))
 
 (defun utility (state actions player ai)
@@ -276,6 +284,7 @@
   0)
 
 (defun compute-opening (p-actions filename)
+  "Compute an opening and stores them in the correct format"
   (compute-diagonals)
   (let* ((state (init-state))
          (prior-actions (subseq p-actions 0 (1- (length p-actions))))
@@ -293,6 +302,7 @@
       (save-opening state action filename))))
 
 (defun save-opening (state action filename)
+  "Save an opening to correct format to a file"
   (with-open-file (stream filename
                           :direction :output
                           :if-exists :append
@@ -305,6 +315,7 @@
             (action-eaten action))))
 
 (defun load-opening (filename)
+  "Loads an opening in the correct format from a file"
   (let ((action-map (make-hash-table :test 'equal)))
     (with-open-file (stream filename
                             :direction :input
@@ -322,6 +333,7 @@
     action-map))
 
 (defun save-endgame (state outcome filename)
+  "Save an endgame in the correct format to a file"
   (with-open-file (stream filename
                           :direction :output
                           :if-exists :append
@@ -342,6 +354,7 @@
                 t-outcome)))))
 
 (defun save-state-outcome-move-pair (state-outcome-move-pair stream)
+  "Format a ending to the correct format"
   (let* ((state (state-outcome-move-pair-state state-outcome-move-pair))
          (board (state-board state))
          (outcome (state-outcome-move-pair-outcome state-outcome-move-pair))
@@ -391,6 +404,7 @@
               ""))))
 
 (defun load-state-outcome-move-pair (line)
+  "Reads an ending in the correct format"
   (let* ((tokens (split-string line ","))
          (row-1 (nth 0 tokens))
          (row-2 (nth 1 tokens))
@@ -421,6 +435,7 @@
         :move nil))))
 
 (defun load-endgame (filename)
+  "Loads the endgame database from a file"
   (let ((endgame-database (make-hash-table :test #'state-test :hash-function #'state-hash)))
     (with-open-file (stream filename
                             :direction :input
@@ -434,6 +449,7 @@
     endgame-database))
 
 (defun generate-permutations (n max)
+  "Generate all permutations of pieces for the endgame database"
   (labels ((permute (lst m)
              (if (= m 1)
                  (mapcar #'list lst)
@@ -447,6 +463,7 @@
      :test #'equal)))
 
 (defun generate-boards (squares board)
+  "Generates all permutations of the board for the endgame database"
   (if (null squares)
     (list board)
     (let ((new-boards '()))
@@ -459,6 +476,7 @@
       new-boards)))
 
 (defun generate-states (n)
+  "Generates all permutations of the state for the endgame database with n pieces"
   ; first we generate all possible permutations of the pieces
   (let ((permutations (generate-permutations n 32))
         (states '()))
@@ -484,6 +502,7 @@
 
 
 (defun endgame-search (state depth ai endgame-database)
+  "Computes the endgame search for a given state"
   (let* ((result (make-utility-move-pair :utility nil :move nil))
          (max-time (+ (get-internal-run-time) most-positive-fixnum))
          (player (to-move state))
@@ -507,6 +526,7 @@
      (make-outcome-move-pair :outcome 0 :move (utility-move-pair-move result))))
 
 (defun endgame-compute (n filename)
+  "Compute all endgames for n pieces and store the result in a file"
   (compute-diagonals)
   (let* ((states (generate-states n))
         (ai (nth 0 (init-gen)))
@@ -522,9 +542,11 @@
         (when result (save-endgame state result filename))))))
 
 (defun find-state (hash states)
+  "Find a state form its hash"
   (find-if (lambda (state) (equal hash (state-hash state))) states))
 
 (defun endgame-convert (n input-filename output-filename)
+  "Convert endgame from hash to proper stored"
   (let* ((endgame-database (load-endgame input-filename))
          (states (generate-states n)))
     (with-open-file (out output-filename
@@ -542,6 +564,7 @@
               out)))))))
 
 (defun process-state (states depth ai endgame-database)
+  "Process a state for the endgame database and get its outcome"
   (dolist (state states)
     (let* ((actions (actions state))
            (terminal (terminal-test state actions +white+))
@@ -560,6 +583,7 @@
       (format t "done processing state~%"))))
 
 (defun divide-states (states n)
+  "Divides the states into subgroups for parallel processing"
   (let* ((len (length states))
          (size (ceiling len n))
          (out '()))
