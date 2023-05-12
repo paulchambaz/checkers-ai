@@ -30,3 +30,17 @@ compute-database:
 		--eval '(ql:quickload :checkers-ai)' \
 		--eval '(checkers-ai::endgame-compute $(piece) "data/endgame-database.csv")' \
 		--eval '(exit)'
+
+genetic-algorithm:
+	@sbcl --dynamic-space-size 12288 \
+		--load checkers-ai.asd \
+		--eval '(ql:quickload :checkers-ai)' \
+		--eval '(checkers-ai::evolution-step (checkers-ai::init-gen) 0)' \
+		--eval '(exit)'
+
+average-ai:
+	@sbcl --dynamic-space-size 12288 \
+		--load checkers-ai.asd \
+		--eval '(ql:quickload :checkers-ai)' \
+		--eval '(checkers-ai::average-ai "data/hard.csv" "data/average-generation.csv")' \
+		--eval '(exit)'

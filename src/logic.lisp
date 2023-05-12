@@ -59,15 +59,16 @@
 
 (defun set-board ()
   "Creates a new board and places random pieces"
-  (list 0 0 0 0 0 0 0 0 ; 0
-        0 0 0 0 0 0 0 0 ; 1
-        0 0 0 0 0 2 0 0 ; 2
-        2 0 1 0 2 0 0 0 ; 3
-        0 1 0 0 0 0 0 0 ; 4
-        0 0 1 0 0 0 0 0 ; 5 
-        0 0 0 0 0 2 0 0 ; 6
-        0 0 0 0 0 0 0 0 ; 7
-  )
+  (list
+    0 2 0 2 0 2 0 2
+    2 0 2 0 0 0 2 0
+    0 2 0 2 0 0 0 2
+    0 0 0 0 0 0 2 0
+    0 0 0 0 0 0 0 0
+    1 0 0 0 1 0 1 0
+    0 1 0 1 0 1 0 1
+    1 0 1 0 1 0 1 0
+    )
 )
 
 (defun actions (state)
@@ -127,40 +128,27 @@
 (defstruct terminal-utility-pair terminal utility)
 
 (defun terminal-test (state actions player)
-  "Returns a pair (terminal utility) about if the state is terminal"
-  (if (equal (state-player state) +white+)
-    (progn
-      ; white is playing
-      (when (equal (list-length (get-blacks (state-board state))) 0)
-        ; black looses since it has no pieces
-        (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility 1)
-                                     (make-terminal-utility-pair :terminal T :utility -1))))
-      (when (equal (list-length (get-whites (state-board state))) 0)
-        (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility -1)
-                                     (make-terminal-utility-pair :terminal T :utility 1))))
-      (when (equal (list-length actions) 0)
-        ; white looses since it has no actions
-        (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility -1)
-                                     (make-terminal-utility-pair :terminal T :utility 1)))))
-    (progn
-      ; black is playing
-      (when (equal (list-length (get-whites (state-board state))) 0)
-        ; white looses since it has no pieces
-        (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility -1)
-                                     (make-terminal-utility-pair :terminal T :utility 1))))
-      (when (equal (list-length (get-blacks (state-board state))) 0)
-        (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility 1)
-                                     (make-terminal-utility-pair :terminal T :utility -1))))
-      (when (equal (list-length actions) 0)
-        ; black looses since it has no actions
-        (return-from terminal-test (if (equal player +white+)
-                                     (make-terminal-utility-pair :terminal T :utility 1)
-                                     (make-terminal-utility-pair :terminal T :utility -1))))))
+  "Return a pair (terminal utility about if the state is terminal"
+  ; if white has no remaining pieces
+  (when (equal (list-length (get-whites (state-board state))) 0)
+    (return-from terminal-test (if (equal player +white+)
+                                 (make-terminal-utility-pair :terminal T :utility -1)
+                                 (make-terminal-utility-pair :terminal T :utility 1))))
+  ; if black has no remaining pieces
+  (when (equal (list-length (get-blacks (state-board state))) 0)
+    (return-from terminal-test (if (equal player +white+)
+                                 (make-terminal-utility-pair :terminal T :utility 1)
+                                 (make-terminal-utility-pair :terminal T :utility -1))))
+  ; if white has no legal move during its turn
+  (when (and (equal (state-player state) +white+) (or (equal actions nil) (equal (length actions) 0)))
+    (return-from terminal-test (if (equal player +white+)
+                                 (make-terminal-utility-pair :terminal T :utility -1)
+                                 (make-terminal-utility-pair :terminal T :utility 1))))
+  ; if black has no legal move during its turn
+  (when (and (equal (state-player state) +black+) (or (equal actions nil) (equal (length actions) 0)))
+    (return-from terminal-test (if (equal player +white+)
+                                 (make-terminal-utility-pair :terminal T :utility 1)
+                                 (make-terminal-utility-pair :terminal T :utility -1))))
 
   ; check that we have not been doing the same moves three times in a row
   (when (and (equal (length (state-previous state)) 6)
@@ -178,8 +166,62 @@
     (when (equal (state-countdown state) 0)
       (return-from terminal-test (make-terminal-utility-pair :terminal T :utility 0)))
 
-
   (return-from terminal-test (make-terminal-utility-pair :terminal nil :utility 0)))
+
+; (defun terminal-test (state actions player)
+;   "Returns a pair (terminal utility) about if the state is terminal"
+;   (if (equal (state-player state) +white+)
+;     (progn
+;       ; white is playing
+;       (when (equal (list-length (get-blacks (state-board state))) 0)
+;         ; black looses since it has no pieces
+;         (return-from terminal-test (if (equal player +white+)
+;                                      (make-terminal-utility-pair :terminal T :utility 1)
+;                                      (make-terminal-utility-pair :terminal T :utility -1))))
+;       (when (equal (list-length (get-whites (state-board state))) 0)
+;         (return-from terminal-test (if (equal player +white+)
+;                                      (make-terminal-utility-pair :terminal T :utility -1)
+;                                      (make-terminal-utility-pair :terminal T :utility 1))))
+;       (when (equal (list-length actions) 0)
+;         ; white looses since it has no actions
+;         (return-from terminal-test (if (equal player +white+)
+;                                      (make-terminal-utility-pair :terminal T :utility -1)
+;                                      (make-terminal-utility-pair :terminal T :utility 1)))))
+;     (progn
+;       ; black is playing
+;       (when (equal (list-length (get-whites (state-board state))) 0)
+;         ; white looses since it has no pieces
+;         (return-from terminal-test (if (equal player +white+)
+;                                      (make-terminal-utility-pair :terminal T :utility -1)
+;                                      (make-terminal-utility-pair :terminal T :utility 1))))
+;       (when (equal (list-length (get-blacks (state-board state))) 0)
+;         (return-from terminal-test (if (equal player +white+)
+;                                      (make-terminal-utility-pair :terminal T :utility 1)
+;                                      (make-terminal-utility-pair :terminal T :utility -1))))
+;       (when (equal (list-length actions) 0)
+;         ; black looses since it has no actions
+;         (return-from terminal-test (if (equal player +white+)
+;                                      (make-terminal-utility-pair :terminal T :utility 1)
+;                                      (make-terminal-utility-pair :terminal T :utility -1))))))
+;
+;   ; check that we have not been doing the same moves three times in a row
+;   (when (and (equal (length (state-previous state)) 6)
+;              (equal (nth 0 (state-previous state))
+;                     (nth 2 (state-previous state)))
+;              (equal (nth 0 (state-previous state))
+;                     (nth 4 (state-previous state)))
+;              (equal (nth 1 (state-previous state))
+;                     (nth 3 (state-previous state)))
+;              (equal (nth 1 (state-previous state))
+;                     (nth 5 (state-previous state))))
+;     (return-from terminal-test (make-terminal-utility-pair :terminal T :utility 0)))
+;
+;     ; check that a piece has been eaten in the last 32 turns
+;     (when (equal (state-countdown state) 0)
+;       (return-from terminal-test (make-terminal-utility-pair :terminal T :utility 0)))
+;
+;
+;   (return-from terminal-test (make-terminal-utility-pair :terminal nil :utility 0)))
 
 ; (defun black-terminal-test (state)
 ;   (equal (list-length (get-blacks (state-board state))) 0))

@@ -4,7 +4,6 @@
 
 (defun player-turn (state actions p-click-state p-selected)
   "Player turn"
-  ; this is officially a cringe status moment!
   (when (= (action-from (nth 0 actions)) -1)
     (setf (state-player state) (switch-player (state-player state)))
     (setf (state-eating state) -1))
@@ -75,7 +74,8 @@
             32
             10.0
             (ai-dna (nth 0 (load-gen "data/hard.csv")))
-            (load-opening "data/opening-database.csv") (load-endgame "data/endgame-database.csv"))
+            (load-opening "data/opening-database.csv")
+            (load-endgame "data/endgame-database.csv"))
           state))
 
 (defun main ()
@@ -132,53 +132,23 @@
                              (draw-pieces (state-board state) renderer)
                              (sdl2:render-present renderer)
 
-
-
-                             ; (if (equal (state-player state) +white+)
-                             ;
-                             ;   ; turn of the player
-                             ;   (progn 
-                             ;     (setf state (ia-turn state (nth 1 *gen*))))
-                             ;   ; (let ((res (player-turn state actions click-state selected)))
-                             ;   ;   (setf click-state (player-turn-res-click-state res))
-                             ;   ;   (setf selected (player-turn-res-selected res))
-                             ;   ;   (setf state (player-turn-res-state res))))
-                             ;
-                             ;   ; turn of the ia
-                             ;   (progn
-                             ;     (setf state (ia-turn state (nth 0 *gen*))))
-                             ;   ; (let ((res (player-turn state actions click-state selected)))
-                             ;   ;   (setf click-state (player-turn-res-click-state res))
-                             ;   ;   (setf selected (player-turn-res-selected res))
-                             ;   ;   (setf state (player-turn-res-state res))))
-                             ;   )
-
-                             ; add a condition so there is 3 ia-turns easy-ai-turn medium-ai-turn hard-ai-turn
-
-                             (cond ((member "--hard" args :test #'equal) (hard-ai-turn state))
-                                   ((member "--easy" args :test #'equal) (easy-ai-turn state))
-                                   (T (medium-ai-turn state)))
-
-
-                             (if (equal (state-player state) +white+)
+                             (if (equal (to-move state) +white+)
                                  (if (member "--white" args :test #'equal)
                                    (let ((res (player-turn state actions click-state selected)))
                                      (setf click-state (player-turn-res-click-state res))
                                      (setf selected (player-turn-res-selected res))
                                      (setf state (player-turn-res-state res)))
-                                   (setf state
-                                         (cond ((member "--hard" args :test #'equal) (hard-ai-turn state))
-                                               ((member "--easy" args :test #'equal) (easy-ai-turn state))
-                                               (T (medium-ai-turn state)))))
+                                   (setf state (cond ((member "--hard" args :test #'equal) (hard-ai-turn state))
+                                                     ((member "--easy" args :test #'equal) (easy-ai-turn state))
+                                                     (T (medium-ai-turn state)))))
                                  (if (member "--black" args :test #'equal)
                                    (let ((res (player-turn state actions click-state selected)))
                                      (setf click-state (player-turn-res-click-state res))
                                      (setf selected (player-turn-res-selected res))
                                      (setf state (player-turn-res-state res)))
-                                   (setf state
-                                         (cond ((member "--hard" args :test #'equal) (hard-ai-turn state))
-                                               ((member "--easy" args :test #'equal) (easy-ai-turn state))
-                                               (T (medium-ai-turn state))))))
+                                   (setf state (cond ((member "--hard" args :test #'equal) (hard-ai-turn state))
+                                                     ((member "--easy" args :test #'equal) (easy-ai-turn state))
+                                                     (T (medium-ai-turn state))))))
 
                              (setf actions (actions state))
 
